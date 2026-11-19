@@ -1,6 +1,10 @@
 package com.church.api.config;
 
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import javax.sql.DataSource;
 
@@ -40,6 +44,40 @@ public class DatabaseInitializer {
 				log.info("{} 테이블에 is_public(성도 화면 공개) 컬럼을 추가했습니다.", table);
 			}
 		}
+
+		// 교인 생일 칸 (월·일·음력 여부·성도 화면 공개 여부)
+		List<String> mcols = jdbc.queryForList("SELECT name FROM pragma_table_info('members')", String.class);
+		Map<String, String> add = new LinkedHashMap<>();
+		add.put("birth_month", "INTEGER");
+		add.put("birth_day", "INTEGER");
+		add.put("birth_lunar", "INTEGER NOT NULL DEFAULT 0");
+		add.put("birthday_public", "INTEGER NOT NULL DEFAULT 0");
+		add.forEach((col, type) -> {
+			if (!mcols.contains(col)) {
+				jdbc.execute("ALTER TABLE members ADD COLUMN " + col + " " + type);
+				log.info("members 테이블에 {} 컬럼을 추가했습니다.", col);
+			}
+		});
+
+		// 생년월일이 있으면 생일 월·일로 복사
+		jdbc.update("""
+				UPDATE members SET birth_month = CAST(substr(birth_date,6,2) AS INTEGER), birth_day = CAST(substr(birth_date,9,2) AS INTEGER)
+				 WHERE birth_month IS NULL AND birth_date GLOB '[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]'""");
+
+		// 메모에 적어둔 "생일: 1월 28일 (음력)" → 생일 칸으로 옮기고 메모에서 지움
+		Pattern p = Pattern.compile("생일:\\s*(\\d{1,2})월\\s*(\\d{1,2})일\\s*\\((음력|양력)\\)");
+		int moved = 0;
+		for (Map<String, Object> r : jdbc.queryForList("SELECT id, memo FROM members WHERE birth_month IS NULL AND memo LIKE '%생일:%'")) {
+			Matcher m = p.matcher((String) r.get("memo"));
+			if (!m.find()) continue;
+			int month = Integer.parseInt(m.group(1)), day = Integer.parseInt(m.group(2));
+			if (month < 1 || month > 12 || day < 1 || day > 31) continue;
+			String rest = (m.replaceFirst("")).trim();
+			jdbc.update("UPDATE members SET birth_month = ?, birth_day = ?, birth_lunar = ?, memo = ? WHERE id = ?",
+					month, day, "음력".equals(m.group(3)) ? 1 : 0, rest.isEmpty() ? null : rest, r.get("id"));
+			moved++;
+		}
+		if (moved > 0) log.info("메모의 생일 {}건을 생일 칸으로 옮겼습니다.", moved);
 	}
 
 	private void insertDefaults(JdbcTemplate jdbc) {

@@ -61,6 +61,10 @@ id church >/dev/null 2>&1 || useradd --system --home "$APP" --shell /usr/sbin/no
 mkdir -p "$APP/data" "$APP/backups"
 install -m 644 "$JAR_SRC" "$APP/church-api.jar"
 chown -R church:church "$APP"
+# 데이터·백업은 프로그램(church 사용자)만 읽고 쓸 수 있게
+chmod 750 "$APP"
+chmod 700 "$APP/data" "$APP/backups"
+find "$APP/data" "$APP/backups" -type f -exec chmod 600 {} +
 
 # 설정 파일: 설치 코드는 처음 한 번만 만들고 이후에는 유지
 if [ -f "$ENV_FILE" ] && grep -q '^SETUP_TOKEN=' "$ENV_FILE"; then
@@ -95,6 +99,8 @@ EnvironmentFile=/etc/church.env
 ExecStart=/usr/bin/java -Xms64m -Xmx${JAVA_XMX} -Dfile.encoding=UTF-8 -jar /opt/church/church-api.jar
 Restart=always
 RestartSec=5
+# 새로 만드는 파일(DB, 백업)은 본인만 읽기/쓰기
+UMask=0077
 SuccessExitStatus=143
 
 [Install]
@@ -106,6 +112,13 @@ say "5/7" "HTTPS 웹서버 설정 ($DOMAIN)"
 cat > /etc/caddy/Caddyfile <<EOF
 $DOMAIN {
 	encode gzip
+	header {
+		# 브라우저가 이 주소는 항상 HTTPS 로만 접속하도록 (1년)
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
 	reverse_proxy 127.0.0.1:8080
 }
 EOF

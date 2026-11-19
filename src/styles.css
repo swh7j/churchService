@@ -420,3 +420,8 @@ td.detail { font-size: 12px; color: var(--muted); max-width: 520px; word-break: 
   .pub-head, .pub-foot { display: none; }
   .pub { background: #fff; }
 }
+
+/* 성도 화면: 이번 달 생일 */
+.pub-birthdays { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.pub-birthdays li { display: flex; gap: 10px; align-items: center; background: #fbf7ee; border-radius: 10px; padding: 10px 12px; }
+.pub-bday-date { font-weight: 800; color: #a0652a; font-variant-numeric: tabular-nums; min-width: 38px; }

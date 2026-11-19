@@ -101,6 +101,24 @@ function Home() {
         <NewsList items={data.news} />
       </section>
 
+      {data.birthdays?.length > 0 && (
+        <section className="pub-card">
+          <div className="pub-card-head">
+            <h2>🎂 이번 달 생일을 축하합니다</h2>
+          </div>
+          <ul className="pub-birthdays">
+            {data.birthdays.map((b, i) => (
+              <li key={i}>
+                <span className="pub-bday-date">{b.month}/{b.day}</span>
+                <span>
+                  {b.name} <span className="pub-date">{b.position}</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       <section className="pub-card">
         <div className="pub-card-head">
           <h2>다가오는 행사</h2>

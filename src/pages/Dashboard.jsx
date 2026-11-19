@@ -108,11 +108,13 @@ export default function Dashboard() {
           {d.birthdays.length ? (
             <ul className="simple">
               {d.birthdays.map((b) => (
-                <li key={b.id}>
+                <li key={`${b.id}-${b.month}-${b.day}`}>
                   <span>
                     {b.name} <span className="muted small">{b.position}</span>
                   </span>
-                  <span className="muted small">{b.birth_date.slice(5).replace('-', '월 ')}일</span>
+                  <span className="muted small">
+                    {b.month}월 {b.day}일{b.lunar && ` (음력 ${b.birth_month}월 ${b.birth_day}일)`}
+                  </span>
                 </li>
               ))}
             </ul>

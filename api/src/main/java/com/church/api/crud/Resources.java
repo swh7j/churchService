@@ -10,7 +10,7 @@ final class Resources {
 
 	static final Map<String, Resource> ALL = Map.ofEntries(
 			Map.entry("members", Resource.of("members", "church").alsoRead("finance")
-					.cols("name", "gender", "birth_date", "phone", "email", "address", "position", "district", "household", "status", "registered_date", "baptism", "memo")
+					.cols("name", "gender", "birth_date", "birth_month", "birth_day", "birth_lunar", "birthday_public", "phone", "email", "address", "position", "district", "household", "status", "registered_date", "baptism", "memo")
 					.filters("status", "position", "district")
 					.search("name", "phone", "district", "household", "address")
 					.order("name, id").build()),

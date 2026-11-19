@@ -1,5 +1,6 @@
 package com.church.api.church;
 
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
 
@@ -15,9 +16,11 @@ import com.church.api.common.Api;
 public class DashboardController {
 
 	private final JdbcTemplate jdbc;
+	private final BirthdayService birthdays;
 
-	public DashboardController(JdbcTemplate jdbc) {
+	public DashboardController(JdbcTemplate jdbc, BirthdayService birthdays) {
 		this.jdbc = jdbc;
+		this.birthdays = birthdays;
 	}
 
 	@GetMapping("/api/dashboard")
@@ -60,8 +63,6 @@ public class DashboardController {
 				"attendance", Api.map("date", lastAtt, "list", attList),
 				"news", jdbc.queryForList("SELECT id, title, category, date, pinned FROM news ORDER BY pinned DESC, date DESC, id DESC LIMIT 5"),
 				"events", jdbc.queryForList("SELECT * FROM events WHERE COALESCE(end_date, start_date) >= ? ORDER BY start_date LIMIT 5", t),
-				"birthdays", jdbc.queryForList("""
-						SELECT id, name, position, birth_date FROM members
-						 WHERE substr(birth_date,6,2) = ? AND status IN ('재적','새가족') ORDER BY substr(birth_date,9,2)""", t.substring(5, 7)));
+				"birthdays", birthdays.inMonth(YearMonth.now(), false));
 	}
 }

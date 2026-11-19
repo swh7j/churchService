@@ -1,5 +1,6 @@
 package com.church.api.church;
 
+import java.time.YearMonth;
 import java.util.List;
 import java.util.Map;
 
@@ -31,9 +32,11 @@ public class PublicController {
 	private static final String BULLETIN_VISIBLE = "is_public = 1 AND date <= date('now','localtime','+6 days')";
 
 	private final JdbcTemplate jdbc;
+	private final BirthdayService birthdays;
 
-	public PublicController(JdbcTemplate jdbc) {
+	public PublicController(JdbcTemplate jdbc, BirthdayService birthdays) {
 		this.jdbc = jdbc;
+		this.birthdays = birthdays;
 	}
 
 	@GetMapping("/info")
@@ -50,7 +53,9 @@ public class PublicController {
 		return Api.map(
 				"bulletin", bulletin.isEmpty() ? null : bulletin.get(0),
 				"news", jdbc.queryForList("SELECT " + NEWS_COLS + " FROM news WHERE is_public = 1 ORDER BY pinned DESC, date DESC, id DESC LIMIT 5"),
-				"events", jdbc.queryForList("SELECT " + EVENT_COLS + " FROM events WHERE is_public = 1 AND COALESCE(end_date, start_date) >= ? ORDER BY start_date LIMIT 5", Api.today()));
+				"events", jdbc.queryForList("SELECT " + EVENT_COLS + " FROM events WHERE is_public = 1 AND COALESCE(end_date, start_date) >= ? ORDER BY start_date LIMIT 5", Api.today()),
+				// 생일 공개에 동의한 교인만, 이름·직분·이번 달 날짜(월·일)만
+				"birthdays", birthdays.inMonth(YearMonth.now(), true));
 	}
 
 	@GetMapping("/news")

@@ -38,7 +38,11 @@ CREATE TABLE IF NOT EXISTS members (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   name TEXT NOT NULL,
   gender TEXT,
-  birth_date TEXT,
+  birth_date TEXT,                              -- 생년월일 (선택, 연도까지 알 때)
+  birth_month INTEGER,                          -- 생일 월
+  birth_day INTEGER,                            -- 생일 일
+  birth_lunar INTEGER NOT NULL DEFAULT 0,       -- 1 = 음력 생일
+  birthday_public INTEGER NOT NULL DEFAULT 0,   -- 1 = 성도 화면에 생일(월·일) 공개 (본인 동의 시)
   phone TEXT,
   email TEXT,
   address TEXT,
