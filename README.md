@@ -19,6 +19,13 @@ npm run dev      # Spring(8080) + React(5173) 같이 실행 → http://localhost
 - `JAVA_HOME`이 Java 8을 가리켜도, PATH에 있는 Java 17을 자동으로 찾아 씁니다 (`scripts/run-api.mjs`).
 - IntelliJ에서 `api/` 폴더를 Maven 프로젝트로 열어 `ChurchApiApplication`을 직접 실행해도 됩니다. (JDK 17 선택)
 
+## 인터넷에 올리기 (무료 클라우드 서버)
+
+- 👉 구글 클라우드: [deploy/README-google.md](deploy/README-google.md)
+- 👉 오라클 클라우드: [deploy/README.md](deploy/README.md)
+
+준비가 끝나면 `npm run deploy` 한 줄로 올리고 업데이트합니다.
+
 ## 배포용 실행 (서버 하나로)
 
 ```bash

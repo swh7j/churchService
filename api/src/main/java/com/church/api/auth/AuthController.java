@@ -1,8 +1,11 @@
 package com.church.api.auth;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.util.List;
 import java.util.Map;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,11 +29,16 @@ public class AuthController {
 	private final LoginGuard guard;
 	private final AuditService audit;
 
-	public AuthController(JdbcTemplate jdbc, SessionService sessions, LoginGuard guard, AuditService audit) {
+	/** 서버 설치 시 정한 설치 코드. 있으면 최초 관리자 생성에 이 코드가 필요 (설치 직후 남이 먼저 가입하는 것 방지) */
+	private final String setupToken;
+
+	public AuthController(JdbcTemplate jdbc, SessionService sessions, LoginGuard guard, AuditService audit,
+			@Value("${app.setup-token:}") String setupToken) {
 		this.jdbc = jdbc;
 		this.sessions = sessions;
 		this.guard = guard;
 		this.audit = audit;
+		this.setupToken = setupToken == null ? "" : setupToken.trim();
 	}
 
 	private int userCount() {
@@ -46,13 +54,24 @@ public class AuthController {
 	@GetMapping("/me")
 	public Map<String, Object> me(HttpServletRequest req) {
 		AuthUser u = sessions.current(req);
-		return Api.map("setupRequired", userCount() == 0, "churchName", churchName(), "user", u == null ? null : u.toPublic());
+		boolean setupRequired = userCount() == 0;
+		return Api.map("setupRequired", setupRequired, "setupTokenRequired", setupRequired && !setupToken.isEmpty(),
+				"churchName", churchName(), "user", u == null ? null : u.toPublic());
 	}
 
 	/** 최초 실행: 사용자가 한 명도 없을 때만 관리자 계정을 만들 수 있음 */
 	@PostMapping("/setup")
 	public synchronized Map<String, Object> setup(@RequestBody Map<String, Object> body, HttpServletRequest req, HttpServletResponse res) {
 		if (userCount() > 0) throw ApiException.bad("이미 관리자 계정이 있습니다. 로그인해 주세요.");
+		if (!setupToken.isEmpty()) {
+			int locked = guard.lockedMinutes("__setup__");
+			if (locked > 0) throw new ApiException(429, "설치 코드 입력 실패가 반복되어 잠겼습니다. " + locked + "분 후 다시 시도해 주세요.");
+			byte[] given = Api.str(body.get("setupToken")).trim().getBytes(StandardCharsets.UTF_8);
+			if (!MessageDigest.isEqual(given, setupToken.getBytes(StandardCharsets.UTF_8))) {
+				guard.fail("__setup__");
+				throw ApiException.bad("설치 코드가 맞지 않습니다. 서버 설치 때 화면에 나온 코드를 입력해 주세요.");
+			}
+		}
 		String username = Api.str(body.get("username")).trim();
 		String name = Api.str(body.get("name")).trim();
 		PasswordHasher.validateUsername(username);

@@ -3,7 +3,8 @@ import { api } from '../api';
 
 export default function Login({ auth, onDone }) {
   const setup = !!auth.setupRequired;
-  const [f, setF] = useState({ name: '', username: '', password: '', confirm: '' });
+  const needToken = setup && !!auth.setupTokenRequired;
+  const [f, setF] = useState({ name: '', username: '', password: '', confirm: '', setupToken: '' });
   const [err, setErr] = useState('');
   const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setF((s) => ({ ...s, [k]: e.target.value }));
@@ -14,7 +15,7 @@ export default function Login({ auth, onDone }) {
     if (setup && f.password !== f.confirm) return setErr('비밀번호 확인이 다릅니다.');
     setBusy(true);
     try {
-      if (setup) await api.post('/auth/setup', { name: f.name, username: f.username, password: f.password });
+      if (setup) await api.post('/auth/setup', { name: f.name, username: f.username, password: f.password, setupToken: f.setupToken });
       else await api.post('/auth/login', { username: f.username, password: f.password });
       onDone();
     } catch (ex) {
@@ -39,6 +40,13 @@ export default function Login({ auth, onDone }) {
         )}
         {auth.error && <p className="login-error">서버에 연결할 수 없습니다. 서버가 실행 중인지 확인해 주세요.</p>}
 
+        {needToken && (
+          <div className="field">
+            <label htmlFor="l_token">설치 코드</label>
+            <input id="l_token" value={f.setupToken} onChange={set('setupToken')} required autoComplete="off" autoFocus />
+            <small className="muted">서버 설치가 끝날 때 화면에 나온 8자리 코드</small>
+          </div>
+        )}
         {setup && (
           <div className="field">
             <label htmlFor="l_name">이름</label>

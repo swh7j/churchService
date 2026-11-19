@@ -28,9 +28,9 @@ if (!fromHome || fromHome.spec < 17) {
   env.JAVA_HOME = onPath.home;
 }
 
-// Windows 콘솔에서 한글 로그가 깨지지 않도록 UTF-8 출력
-const utf8 = '-Dfile.encoding=UTF-8 -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8';
-const goals = process.argv[2] === 'package' ? ['-B', '-DskipTests', 'package'] : ['spring-boot:run', `-Dspring-boot.run.jvmArguments="${utf8}"`];
+// Windows 콘솔에서 한글 로그가 깨지지 않도록 UTF-8 출력 (java 실행 시 자동 적용되는 환경변수)
+env.JDK_JAVA_OPTIONS = '-Dfile.encoding=UTF-8 -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8';
+const goals = process.argv[2] === 'package' ? ['-B', '-q', '-DskipTests', 'clean', 'package'] : ['spring-boot:run'];
 const child = isWin
   ? spawn('cmd.exe', ['/c', path.join(apiDir, 'mvnw.cmd'), ...goals], { cwd: apiDir, env, stdio: 'inherit' })
   : spawn('./mvnw', goals, { cwd: apiDir, env, stdio: 'inherit' });

@@ -6,9 +6,10 @@
   "description": "교회 회계 및 교인 관리 시스템 (연습용, 로컬 실행)",
   "scripts": {
     "dev": "concurrently -k -n api,web -c blue,green \"node scripts/run-api.mjs\" \"vite\"",
-    "build": "vite build && node scripts/run-api.mjs package",
+    "build": "vite build --outDir api/src/main/resources/static --emptyOutDir && node scripts/run-api.mjs package",
     "start": "cd api && java -Dfile.encoding=UTF-8 -Dstdout.encoding=UTF-8 -jar target/church-api.jar",
-    "reset": "node server/reset.js"
+    "reset": "node server/reset.js",
+    "deploy": "powershell -ExecutionPolicy Bypass -File deploy/deploy.ps1"
   },
   "dependencies": {
     "express": "^5.3.0",

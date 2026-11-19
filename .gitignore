@@ -3,6 +3,11 @@ dist/
 data/
 backups/
 api/target/
+# npm run build 시 jar 에 넣을 화면 (빌드 결과물)
+api/src/main/resources/static/
+# 서버 접속 정보 (deploy.ps1 이 만듦)
+deploy/server.local.json
+*.key
 *.log
 .idea/
 .vscode/
