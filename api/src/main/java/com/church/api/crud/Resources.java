@@ -57,7 +57,7 @@ final class Resources {
 					.order("pinned DESC, date DESC, id DESC").build()),
 
 			Map.entry("bulletins", Resource.of("bulletins", "church")
-					.cols("date", "title", "preacher", "sermon_title", "scripture", "worship_order", "announcements", "prayer_requests", "memo", "is_public")
+					.cols("date", "title", "preacher", "sermon_title", "scripture", "worship_order", "announcements", "prayer_requests", "memo", "is_public", "layout", "offering_names")
 					.search("title", "sermon_title", "preacher", "scripture")
 					.order("date DESC, id DESC").build()),
 

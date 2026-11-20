@@ -45,6 +45,15 @@ public class DatabaseInitializer {
 			}
 		}
 
+		// 4면 주보 (내용 JSON, 헌금자 명단)
+		List<String> bcols = jdbc.queryForList("SELECT name FROM pragma_table_info('bulletins')", String.class);
+		for (String col : List.of("layout", "offering_names")) {
+			if (!bcols.contains(col)) {
+				jdbc.execute("ALTER TABLE bulletins ADD COLUMN " + col + " TEXT");
+				log.info("bulletins 테이블에 {} 컬럼을 추가했습니다.", col);
+			}
+		}
+
 		// 교인 생일 칸 (월·일·음력 여부·성도 화면 공개 여부)
 		List<String> mcols = jdbc.queryForList("SELECT name FROM pragma_table_info('members')", String.class);
 		Map<String, String> add = new LinkedHashMap<>();

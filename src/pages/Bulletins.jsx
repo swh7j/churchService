@@ -1,55 +1,50 @@
-import { useContext, useState } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { api, saveRow } from '../api';
-import { AppCtx, Badge, Card, confirmDelete, Form, Modal, PageHeader, useList } from '../components';
+import { AppCtx, Badge, Card, confirmDelete, Modal, PageHeader, useList } from '../components';
 import { addDays, kdate, nextSunday } from '../utils';
-
-const TEMPLATE = [
-  '예배로 부름 ......... 인도자',
-  '찬송 ................. 다같이',
-  '대표기도 ............. ',
-  '성경봉독 ............. 인도자',
-  '찬양 ................. 성가대',
-  '설교 ................. ',
-  '헌금 ................. 다같이',
-  '광고 ................. 인도자',
-  '축도 ................. ',
-].join('\n');
-
-const FIELDS = [
-  { name: 'date', label: '예배일', type: 'date', required: true },
-  { name: 'title', label: '예배명', placeholder: '예: 주일 예배' },
-  { name: 'sermon_title', label: '설교 제목' },
-  { name: 'scripture', label: '본문 말씀', placeholder: '예: 요한복음 3:16' },
-  { name: 'preacher', label: '설교자' },
-  { name: 'worship_order', label: '예배 순서', type: 'textarea', rows: 10, full: true },
-  { name: 'announcements', label: '교회 소식 / 광고', type: 'textarea', rows: 6, full: true },
-  { name: 'prayer_requests', label: '기도 제목', type: 'textarea', rows: 4, full: true },
-  { name: 'memo', label: '내부 메모 (주보에 표시 안 됨)', type: 'textarea', rows: 2, full: true },
-  { name: 'is_public', label: '성도 화면에 공개 (예배일 6일 전부터 보임)', type: 'checkbox', full: true },
-];
+import BulletinSheets from './bulletin/BulletinSheets';
+import { BulletinEditor, TemplateEditor } from './bulletin/Editors';
+import { parseLayout, parseTemplate } from './bulletin/layout';
 
 export default function Bulletins() {
   const { settings } = useContext(AppCtx);
   const { rows, reload } = useList('/bulletins');
   const [editing, setEditing] = useState(null);
   const [viewing, setViewing] = useState(null);
+  const [template, setTemplate] = useState(null);
+  const [editingTemplate, setEditingTemplate] = useState(false);
+  const church = settings.church_name || '우리교회';
 
+  useEffect(() => {
+    api.get('/bulletin-template').then((r) => setTemplate(parseTemplate(r.template))).catch(() => setTemplate(parseTemplate('')));
+  }, []);
+
+  // 편집할 때는 layout 을 객체로 다룸
+  const edit = (b) => setEditing({ ...b, layout: parseLayout(b.layout) });
   const save = async (v) => {
     const r = await saveRow('bulletins', v);
     setEditing(null);
     reload();
     setViewing(r);
   };
+  const saveTemplate = async (t) => {
+    await api.put('/bulletin-template', { template: JSON.stringify(t) });
+    setTemplate(t);
+    setEditingTemplate(false);
+  };
   const remove = (b) => confirmDelete(`${b.date} 주보를 삭제할까요?`, () => api.del(`/bulletins/${b.id}`)).then((ok) => ok && reload());
+  // 지난 주보를 바탕으로 다음 주 주보 (헌금자 명단·교회 소식·메모는 비움, 권·주는 자동 계산으로)
   const copy = (b) => {
     const { id, ...rest } = b;
-    setEditing({ ...rest, date: addDays(b.date, 7), sermon_title: '', scripture: '', memo: '' });
+    const layout = parseLayout(b.layout);
+    edit({ ...rest, date: addDays(b.date, 7), announcements: '', offering_names: '', memo: '', layout: { ...layout, vol: '', week: '' } });
   };
 
   return (
     <>
-      <PageHeader title="주보 관리" desc="주보를 작성하고, 인쇄용 화면으로 출력할 수 있습니다.">
-        <button className="btn primary" onClick={() => setEditing({ date: nextSunday(), title: '주일 예배', worship_order: TEMPLATE, is_public: 1 })}>
+      <PageHeader title="주보 관리" desc="4면 주보(A4 가로)를 작성하고 인쇄하거나 PDF로 저장합니다.">
+        <button className="btn" onClick={() => setEditingTemplate(true)} disabled={!template}>주보 기본 정보</button>
+        <button className="btn primary" onClick={() => edit({ date: nextSunday(), title: '', is_public: 1 })}>
           + 새 주보
         </button>
       </PageHeader>
@@ -69,7 +64,7 @@ export default function Bulletins() {
                   <td>{b.preacher}</td>
                   <td className="row-actions">
                     <button className="btn sm" onClick={() => setViewing(b)}>보기·인쇄</button>
-                    <button className="btn sm" onClick={() => setEditing(b)}>수정</button>
+                    <button className="btn sm" onClick={() => edit(b)}>수정</button>
                     <button className="btn sm" onClick={() => copy(b)} title="이 주보를 바탕으로 다음 주 주보 만들기">다음 주로 복사</button>
                     <button className="btn sm danger" onClick={() => remove(b)}>삭제</button>
                   </td>
@@ -81,18 +76,30 @@ export default function Bulletins() {
         </div>
       </Card>
 
-      {editing && (
+      {editing && template && (
         <Modal title={editing.id ? '주보 수정' : '주보 작성'} onClose={() => setEditing(null)} wide>
-          <Form fields={FIELDS} initial={editing} onSubmit={save} onCancel={() => setEditing(null)} />
+          <BulletinEditor initial={editing} template={template} onSave={save} onCancel={() => setEditing(null)} />
         </Modal>
       )}
-      {viewing && (
+      {editingTemplate && (
+        <Modal title="주보 기본 정보 (매주 바뀌지 않는 내용)" onClose={() => setEditingTemplate(false)} wide>
+          <TemplateEditor initial={template} onSave={saveTemplate} onCancel={() => setEditingTemplate(false)} />
+        </Modal>
+      )}
+      {viewing && template && (
         <Modal title="주보 미리보기" onClose={() => setViewing(null)} wide>
           <div className="form-actions no-print top">
-            <button className="btn" onClick={() => { setEditing(viewing); setViewing(null); }}>수정</button>
+            <span className="muted small be-print-tip">인쇄 창에서 용지 A4·가로, '배경 그래픽' 켜기 → PDF로 저장도 가능</span>
+            <button className="btn" onClick={() => { edit(viewing); setViewing(null); }}>수정</button>
             <button className="btn primary" onClick={() => window.print()}>인쇄</button>
           </div>
-          <BulletinView b={viewing} church={settings.church_name || '우리교회'} />
+          {viewing.layout ? (
+            <div className="bp-preview">
+              <BulletinSheets b={viewing} t={template} L={parseLayout(viewing.layout)} church={church} />
+            </div>
+          ) : (
+            <BulletinView b={viewing} church={church} />
+          )}
         </Modal>
       )}
     </>

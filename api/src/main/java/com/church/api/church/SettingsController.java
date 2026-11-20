@@ -28,7 +28,8 @@ public class SettingsController {
 	@GetMapping
 	public Map<String, Object> get() {
 		Map<String, Object> m = new LinkedHashMap<>();
-		jdbc.queryForList("SELECT key, value FROM settings").forEach(r -> m.put((String) r.get("key"), r.get("value")));
+		// 주보 기본 정보(표지 사진 포함, 큼)는 /api/bulletin-template 에서 따로 조회
+		jdbc.queryForList("SELECT key, value FROM settings WHERE key <> 'bulletin_template'").forEach(r -> m.put((String) r.get("key"), r.get("value")));
 		return m;
 	}
 

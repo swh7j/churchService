@@ -134,7 +134,9 @@ CREATE TABLE IF NOT EXISTS bulletins (
   announcements TEXT,
   prayer_requests TEXT,
   is_public INTEGER NOT NULL DEFAULT 1,
-  memo TEXT
+  memo TEXT,
+  layout TEXT,          -- 4면 주보 내용 (JSON)
+  offering_names TEXT   -- 헌금자 명단 (성도 화면 API로 공개하지 않음)
 );
 CREATE TABLE IF NOT EXISTS events (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -158,4 +160,13 @@ CREATE TABLE IF NOT EXISTS attendance (
   service_id INTEGER NOT NULL REFERENCES services(id) ON DELETE CASCADE,
   member_id INTEGER NOT NULL REFERENCES members(id) ON DELETE CASCADE,
   UNIQUE (date, service_id, member_id)
+);
+
+-- 성도 화면 익명 기도제목 (로그인 없이 작성, 작성할 때 정한 비밀번호로 삭제)
+CREATE TABLE IF NOT EXISTS prayers (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  nickname TEXT,
+  content TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );

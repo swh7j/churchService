@@ -10,6 +10,7 @@ import Offerings from './pages/Offerings';
 import Ledger from './pages/Ledger';
 import Reports from './pages/Reports';
 import Groups from './pages/Groups';
+import Prayers from './pages/Prayers';
 import News from './pages/News';
 import Bulletins from './pages/Bulletins';
 import Events from './pages/Events';
@@ -33,7 +34,7 @@ const NAV = [
   },
   {
     section: '소통',
-    items: [['/news', '교회 소식', News, 'church'], ['/bulletins', '주보 관리', Bulletins, 'church'], ['/events', '행사 일정', Events, 'church']],
+    items: [['/news', '교회 소식', News, 'church'], ['/bulletins', '주보 관리', Bulletins, 'church'], ['/events', '행사 일정', Events, 'church'], ['/prayers', '기도제목 게시판', Prayers, 'church']],
   },
   {
     section: '관리',
