@@ -155,20 +155,24 @@ systemctl restart caddy
 
 echo -n "  프로그램이 켜지기를 기다리는 중"
 for i in $(seq 1 60); do
-  if curl -fs http://127.0.0.1:8080/api/public/info >/dev/null 2>&1; then echo " 완료"; break; fi
+  # 교회 목록은 교회를 고르지 않아도 응답함 (여러 교회 지원)
+  if curl -fs http://127.0.0.1:8080/api/churches >/dev/null 2>&1; then echo " 완료"; break; fi
   echo -n "."; sleep 2
   if [ "$i" -eq 60 ]; then echo; die "프로그램이 시작되지 않았습니다. 로그 확인: sudo journalctl -u church -n 50"; fi
 done
 
-USERS=$(curl -fs http://127.0.0.1:8080/api/auth/me | grep -o '"setupRequired":true' || true)
+# 첫 번째 교회 (처음부터 쓰던 데이터)
+CHURCH=$(curl -fs http://127.0.0.1:8080/api/churches | grep -o '"code":"[^"]*"' | head -1 | cut -d'"' -f4 || true)
+USERS=$(curl -fs -H "X-Church: $CHURCH" http://127.0.0.1:8080/api/auth/me | grep -o '"setupRequired":true' || true)
 
 cat <<EOF
 
 =====================================================================
   설치가 끝났습니다!
 
-  성도 화면 :  https://$DOMAIN/
-  관리자 화면:  https://$DOMAIN/admin
+  교회 선택 :  https://$DOMAIN/
+  성도 화면 :  https://$DOMAIN/c/$CHURCH
+  관리자 화면:  https://$DOMAIN/c/$CHURCH/admin
 EOF
 if [ -n "$USERS" ]; then
 cat <<EOF
