@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
-import { Card, PageHeader, useList } from '../components';
+import { askConfirm, Card, PageHeader, useList } from '../components';
 import { addDays, groupBy, kdate, lastSunday } from '../utils';
 
 export default function Attendance() {
@@ -32,8 +32,8 @@ export default function Attendance() {
     });
   }, [date, sid]);
 
-  const guard = (fn) => (...a) => {
-    if (dirty && !confirm('저장하지 않은 출석 체크가 있습니다. 저장하지 않고 이동할까요?')) return;
+  const guard = (fn) => async (...a) => {
+    if (dirty && !(await askConfirm('저장하지 않은 출석 체크가 있습니다. 저장하지 않고 이동할까요?', { ok: '이동' }))) return;
     fn(...a);
   };
   const toggle = (id) => {

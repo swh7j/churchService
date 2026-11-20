@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api';
-import { Badge, Card, confirmDelete, PageHeader } from '../components';
+import { askConfirm, Badge, Card, confirmDelete, PageHeader } from '../components';
 
 const KIND = { auto: ['자동', 'blue'], manual: ['수동', 'green'], 'before-restore': ['복원 직전', 'amber'] };
 const size = (n) => (n > 1024 * 1024 ? (n / 1024 / 1024).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB');
@@ -25,8 +25,8 @@ export default function Backup() {
     }
   };
   const restore = async (b) => {
-    if (!confirm(`${b.created_at} 시점으로 모든 데이터를 되돌릴까요?\n\n그 이후에 입력한 내용은 사라집니다.\n(지금 상태는 '복원 직전' 백업으로 자동 보관됩니다)`)) return;
-    if (prompt('확인을 위해 "복원" 이라고 입력하세요.') !== '복원') return;
+    const msg = `${b.created_at} 시점으로 모든 데이터를 되돌릴까요?\n\n그 이후에 입력한 내용은 사라집니다.\n(지금 상태는 '복원 직전' 백업으로 자동 보관됩니다)`;
+    if (!(await askConfirm(msg, { ok: '복원', danger: true, typeToConfirm: '복원' }))) return;
     try {
       const r = await api.post(`/backups/${encodeURIComponent(b.name)}/restore`);
       alert(`복원했습니다. 화면을 새로 불러옵니다.\n복원 직전 상태: ${r.safety}`);

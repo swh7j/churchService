@@ -1,4 +1,5 @@
 import { createContext, useCallback, useEffect, useState } from 'react';
+import { createRoot } from 'react-dom/client';
 import { api } from './api';
 
 export const AppCtx = createContext({ settings: {}, reloadSettings: () => {}, user: null, can: () => false });
@@ -172,8 +173,53 @@ export function useList(path, params) {
   return { rows, reload, loading };
 }
 
+/**
+ * 화면 안에 뜨는 확인 창 (브라우저 confirm 대신).
+ * 카카오톡 같은 앱 안 브라우저나 '대화상자 차단'을 누른 브라우저에서는 confirm 이 안 떠서 버튼이 먹지 않음.
+ * typeToConfirm: 그 낱말을 입력해야 확인 버튼이 눌림 (복원처럼 큰 작업용)
+ */
+export function askConfirm(message, { ok = '확인', danger = false, typeToConfirm } = {}) {
+  return new Promise((resolve) => {
+    const host = document.createElement('div');
+    document.body.append(host);
+    const root = createRoot(host);
+    const done = (v) => {
+      root.unmount();
+      host.remove();
+      resolve(v);
+    };
+    root.render(<ConfirmBox message={message} ok={ok} danger={danger} typeToConfirm={typeToConfirm} onDone={done} />);
+  });
+}
+
+function ConfirmBox({ message, ok, danger, typeToConfirm, onDone }) {
+  const [typed, setTyped] = useState('');
+  const ready = !typeToConfirm || typed.trim() === typeToConfirm;
+  useEffect(() => {
+    const h = (e) => e.key === 'Escape' && onDone(false);
+    window.addEventListener('keydown', h);
+    return () => window.removeEventListener('keydown', h);
+  }, [onDone]);
+  return (
+    <div className="modal-backdrop confirm-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onDone(false)}>
+      <form className="modal confirm-box" role="alertdialog" aria-modal="true" onSubmit={(e) => { e.preventDefault(); if (ready) onDone(true); }}>
+        <div className="modal-body">
+          <p className="confirm-msg">{message}</p>
+          {typeToConfirm && (
+            <input autoFocus value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={`확인을 위해 "${typeToConfirm}" 이라고 입력하세요`} aria-label="확인 낱말" style={{ width: '100%', marginTop: 12 }} />
+          )}
+          <div className="form-actions">
+            <button type="button" className="btn" onClick={() => onDone(false)}>취소</button>
+            <button className={'btn primary' + (danger ? ' danger-fill' : '')} disabled={!ready} autoFocus={!typeToConfirm}>{ok}</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 export async function confirmDelete(message, fn) {
-  if (!confirm(message)) return false;
+  if (!(await askConfirm(message, { ok: '삭제', danger: true }))) return false;
   try {
     await fn();
     return true;

@@ -1,6 +1,7 @@
 // 주보 작성 화면 (매주 내용) + 주보 기본 정보 화면 (표지·비전·예배시간 등)
 import { useState } from 'react';
 import { api } from '../../api';
+import { askConfirm } from '../../components';
 import { deriveSummary, newsToAnnouncements, shrinkImage, volWeek } from './layout';
 import './bulletin.css';
 
@@ -139,7 +140,7 @@ export function BulletinEditor({ initial, template, onSave, onCancel }) {
     const news = await api.get('/news');
     const text = newsToAnnouncements(news, b.date);
     if (!text) return alert('상단 고정 글이나 이번 주(예배일 전 7일)에 올린 교회 소식이 없습니다.');
-    if (b.announcements?.trim() && !confirm('지금 적힌 교회 소식을 지우고 교회 소식 메뉴의 글로 바꿀까요?')) return;
+    if (b.announcements?.trim() && !(await askConfirm('지금 적힌 교회 소식을 지우고 교회 소식 메뉴의 글로 바꿀까요?', { ok: '바꾸기' }))) return;
     set('announcements')(text);
   };
 
