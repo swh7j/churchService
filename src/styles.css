@@ -427,3 +427,20 @@ td.detail { font-size: 12px; color: var(--muted); max-width: 520px; word-break: 
 .pub-birthdays { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
 .pub-birthdays li { display: flex; gap: 10px; align-items: center; background: #fbf7ee; border-radius: 10px; padding: 10px 12px; }
 .pub-bday-date { font-weight: 800; color: #a0652a; font-variant-numeric: tabular-nums; min-width: 38px; }
+
+/* ---------- 악보 ---------- */
+.sheet-layout { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+.sheet-pages { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-top: 16px; }
+.sheet-page { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #fff; }
+.sheet-thumb { height: 150px; display: grid; place-items: center; background: #f6f7f9; overflow: hidden; }
+.sheet-thumb img { max-width: 100%; max-height: 100%; object-fit: contain; transition: transform .15s; }
+.sheet-page-bar { display: flex; align-items: center; gap: 4px; padding: 6px; }
+.sheet-page-bar strong { margin-right: auto; font-size: 13px; }
+.sheet-page-bar .btn.sm { padding: 2px 7px; }
+.sheet-add { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 4px; min-height: 150px; border: 2px dashed #cfd5df; border-radius: 8px; cursor: pointer; font-weight: 600; text-align: center; padding: 8px; }
+.sheet-add:hover { border-color: var(--primary); }
+.sheet-preview { margin-top: 16px; display: grid; gap: 6px; }
+.sheet-preview img { width: 100%; max-height: 60vh; object-fit: contain; object-position: top; background: #f6f7f9; border: 1px solid #e5e7eb; border-radius: 6px; }
+.sheet-full { display: block; width: 100%; height: auto; margin-top: 10px; }
+.sheet-card { padding: 12px; }
+@media print { .sheet-full { margin: 0; } }

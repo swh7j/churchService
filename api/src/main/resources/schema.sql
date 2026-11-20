@@ -171,3 +171,14 @@ CREATE TABLE IF NOT EXISTS prayers (
   is_secret INTEGER NOT NULL DEFAULT 0,  -- 비밀 기도제목: 관리자만 내용을 봄
   created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
+
+-- 악보: 관리자가 올린 여러 장을 화면에서 세로로 이어 붙인 JPEG 한 장
+CREATE TABLE IF NOT EXISTS sheets (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  date TEXT NOT NULL,
+  title TEXT NOT NULL,
+  pages INTEGER NOT NULL DEFAULT 1,      -- 합친 장 수
+  image BLOB NOT NULL,
+  is_public INTEGER NOT NULL DEFAULT 1,  -- 성도 화면 공개 여부
+  updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);

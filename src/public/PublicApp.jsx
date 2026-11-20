@@ -1,4 +1,4 @@
-// 성도 화면: 로그인 없이 교회 소식 · 주보 · 행사 일정 보기, 익명 기도제목 나누기
+// 성도 화면: 로그인 없이 교회 소식 · 주보 · 악보 · 행사 일정 보기, 익명 기도제목 나누기
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Link, NavLink, Route, Routes, useParams } from 'react-router-dom';
 import { api } from '../api';
@@ -7,6 +7,7 @@ import BulletinSheets from '../pages/bulletin/BulletinSheets';
 import { parseLayout, parseTemplate } from '../pages/bulletin/layout';
 import { dday, kdate } from '../utils';
 import PrayerBoard from './PrayerBoard';
+import { SheetDetail, SheetList } from './Sheets';
 
 const NEWS_CATS = ['공지', '소식', '행사', '기도제목'];
 
@@ -51,6 +52,7 @@ export default function PublicApp() {
           <NavLink to="/" end>홈</NavLink>
           <NavLink to="/news">교회 소식</NavLink>
           <NavLink to="/bulletins">주보</NavLink>
+          <NavLink to="/sheets">악보</NavLink>
           <NavLink to="/events">행사 일정</NavLink>
           <NavLink to="/prayers">기도제목</NavLink>
         </nav>
@@ -60,6 +62,8 @@ export default function PublicApp() {
             <Route path="/news" element={<NewsPage />} />
             <Route path="/bulletins" element={<BulletinList />} />
             <Route path="/bulletins/:id" element={<BulletinDetail church={church} />} />
+            <Route path="/sheets" element={<SheetList />} />
+            <Route path="/sheets/:id" element={<SheetDetail />} />
             <Route path="/events" element={<EventsPage />} />
             <Route path="/prayers" element={<PrayerBoard />} />
             <Route path="*" element={<p className="pub-empty">없는 페이지입니다. <Link to="/">홈으로</Link></p>} />

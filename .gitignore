@@ -12,3 +12,6 @@ deploy/server.local.json
 .idea/
 .vscode/
 *.iml
+
+# Claude Code 개인 설정 (플러그인 등)
+.claude/settings.local.json
