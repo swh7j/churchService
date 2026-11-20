@@ -1,5 +1,5 @@
 // 4면 주보 인쇄 화면: A4 가로 2장 (바깥면: 교회소식 | 표지, 안쪽면: 주일낮예배 | 오후·수요예배)
-import { useEffect, useLayoutEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { dotDate, volWeek } from './layout';
 import './bulletin.css';
 
@@ -314,17 +314,35 @@ export default function BulletinSheets({ b, t, L, church }) {
       if (p.scrollHeight > p.clientHeight + 1) p.style.zoom = String(Math.floor((p.clientHeight / p.scrollHeight) * 100) / 100);
     });
   });
+  // 화면이 A4 가로보다 좁으면(휴대폰 등) 화면 폭에 맞춰 줄여서 보여 줌 (인쇄는 원래 크기)
+  const [fit, setFit] = useState(1);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return undefined;
+    const update = () => {
+      const sheet = el.querySelector('.bp-sheet');
+      if (sheet && sheet.offsetWidth) setFit(Math.min(1, el.clientWidth / sheet.offsetWidth));
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   const auto = volWeek(b.date, t.volBaseYear);
   const vw = { vol: L.vol || auto.vol, week: L.week || auto.week };
   return (
-    <div className="bp-sheets print-area" ref={ref}>
-      <div className="bp-sheet">
-        <NewsPanel b={b} t={t} />
-        <CoverPanel b={b} t={t} church={church} vw={vw} />
+    <div className="bp-sheets print-area" ref={ref} style={{ '--fit': fit }}>
+      <div className="bp-fit">
+        <div className="bp-sheet">
+          <NewsPanel b={b} t={t} />
+          <CoverPanel b={b} t={t} church={church} vw={vw} />
+        </div>
       </div>
-      <div className="bp-sheet">
-        <MainPanel b={b} t={t} L={L} />
-        <SubPanel t={t} L={L} />
+      <div className="bp-fit">
+        <div className="bp-sheet">
+          <MainPanel b={b} t={t} L={L} />
+          <SubPanel t={t} L={L} />
+        </div>
       </div>
     </div>
   );

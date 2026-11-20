@@ -26,7 +26,8 @@ public class PublicController {
 
 	private static final String NEWS_COLS = "id, title, category, content, pinned, date";
 	private static final String BULLETIN_LIST_COLS = "id, date, title, preacher, sermon_title, scripture";
-	private static final String BULLETIN_COLS = BULLETIN_LIST_COLS + ", worship_order, announcements, prayer_requests";
+	// layout: 4면 주보 내용(예배 순서·봉사표 등). 헌금자 명단(offering_names)과 내부 메모는 내보내지 않음
+	private static final String BULLETIN_COLS = BULLETIN_LIST_COLS + ", worship_order, announcements, prayer_requests, layout";
 	private static final String EVENT_COLS = "id, title, start_date, end_date, location, description";
 	// 다음 주일 주보를 주중에 미리 올려도 보이도록, 오늘부터 6일 뒤까지의 주보 공개
 	private static final String BULLETIN_VISIBLE = "is_public = 1 AND date <= date('now','localtime','+6 days')";
@@ -86,6 +87,13 @@ public class PublicController {
 		List<Map<String, Object>> r = jdbc.queryForList("SELECT " + BULLETIN_COLS + " FROM bulletins WHERE id = ? AND " + BULLETIN_VISIBLE, id);
 		if (r.isEmpty()) throw ApiException.notFound("주보를 찾을 수 없습니다.");
 		return r.get(0);
+	}
+
+	/** 4면 주보 고정 정보 (표어·비전·예배 시간·표지 사진 등, 종이 주보에 인쇄되는 내용) */
+	@GetMapping("/bulletin-template")
+	public Map<String, Object> bulletinTemplate() {
+		List<String> v = jdbc.queryForList("SELECT value FROM settings WHERE key = 'bulletin_template'", String.class);
+		return Api.map("template", v.isEmpty() ? null : v.get(0));
 	}
 
 	@GetMapping("/events")

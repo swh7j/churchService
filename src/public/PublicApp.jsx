@@ -3,6 +3,8 @@ import { useEffect, useState } from 'react';
 import { BrowserRouter, Link, NavLink, Route, Routes, useParams } from 'react-router-dom';
 import { api } from '../api';
 import { BulletinView } from '../pages/Bulletins';
+import BulletinSheets from '../pages/bulletin/BulletinSheets';
+import { parseLayout, parseTemplate } from '../pages/bulletin/layout';
 import { dday, kdate } from '../utils';
 import PrayerBoard from './PrayerBoard';
 
@@ -223,8 +225,24 @@ function BulletinDetail({ church }) {
         <Link to="/bulletins">← 주보 목록</Link>
         {data && <button className="pub-btn small" onClick={() => window.print()}>인쇄</button>}
       </div>
-      {data ? <BulletinView b={data} church={church} /> : <Status error={error} />}
+      {data ? <PublicBulletin b={data} church={church} /> : <Status error={error} />}
     </>
+  );
+}
+
+/** 4면 주보로 만든 주보는 인쇄본과 같은 모양으로, 예전 주보는 간단한 모양으로 */
+function PublicBulletin({ b, church }) {
+  const [t, setT] = useState(null);
+  useEffect(() => {
+    if (!b.layout) return;
+    api.get('/public/bulletin-template').then((r) => setT(parseTemplate(r.template))).catch(() => setT(parseTemplate('')));
+  }, [b.layout]);
+  if (!b.layout) return <BulletinView b={b} church={church} />;
+  if (!t) return <Status />;
+  return (
+    <div className="bp-preview">
+      <BulletinSheets b={b} t={t} L={parseLayout(b.layout)} church={church} />
+    </div>
   );
 }
 

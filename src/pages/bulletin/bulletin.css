@@ -26,7 +26,10 @@
 /* ---------- 4면 주보: 인쇄 화면 (A4 가로 297×210mm, 반으로 접어 4면) ---------- */
 .bp-preview { overflow-x: auto; background: #e9ebef; padding: 12px; border-radius: 8px; }
 .bp-sheets { --ink: #1d1d1d; color: var(--ink); font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', 'Nanum Gothic', sans-serif; font-size: 10.5pt; line-height: 1.55; }
-.bp-sheet { width: 297mm; height: 210mm; display: grid; grid-template-columns: 1fr 1fr; background: #fff; margin: 0 auto 12px; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12); overflow: hidden; }
+.bp-sheet { width: 297mm; height: 210mm; display: grid; grid-template-columns: 1fr 1fr; background: #fff; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12); overflow: hidden; }
+/* 좁은 화면에서는 --fit 배율만큼 줄여 보여 줌 (자리도 줄어든 크기만큼만 차지) */
+.bp-fit { width: calc(297mm * var(--fit, 1)); height: calc(210mm * var(--fit, 1)); margin: 0 auto 12px; }
+.bp-fit > .bp-sheet { transform: scale(var(--fit, 1)); transform-origin: top left; }
 .bp-panel { display: flex; flex-direction: column; padding: 8mm 10mm; min-width: 0; min-height: 0; overflow: hidden; }
 .bp-grow { flex: 1; min-height: 3mm; }
 .bp-title { text-align: center; font-size: 19pt; font-weight: 900; letter-spacing: 0.35em; margin: 1mm 0 3mm; }
@@ -104,6 +107,16 @@
   body.printing-bulletin .content { padding: 0; }
   body.printing-bulletin .bp-preview { overflow: visible; background: none; padding: 0; }
   body.printing-bulletin .print-area.bp-sheets { position: static; width: auto; }
-  .bp-sheet { margin: 0; box-shadow: none; break-after: page; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
-  .bp-sheet:last-child { break-after: auto; }
+  .bp-fit { width: auto; height: auto; margin: 0; break-after: page; }
+  .bp-fit:last-child { break-after: auto; }
+  .bp-fit > .bp-sheet { transform: none; }
+  .bp-sheet { margin: 0; box-shadow: none; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  body.printing-bulletin .pub-main { padding: 0; max-width: none; }
+}
+
+/* 휴대폰 화면: 4면을 한 면씩 세로로 (표지 먼저) 크게 보여 줌. 인쇄는 위의 A4 가로 그대로 */
+@media screen and (max-width: 700px) {
+  .bp-sheet { width: 148.5mm; height: 420mm; grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
+  .bp-fit { width: calc(148.5mm * var(--fit, 1)); height: calc(420mm * var(--fit, 1)); }
+  .bp-cover { order: -1; }
 }
