@@ -1,6 +1,7 @@
 // 악보 관리: 사진 여러 장을 골라 순서를 정하면 세로로 이어 붙인 한 장으로 올림
 import { useEffect, useState } from 'react';
 import { api } from '../api';
+import { withChurch } from '../church';
 import { Badge, Card, confirmDelete, Field, Modal, PageHeader, useList } from '../components';
 import { kdate, nextSunday } from '../utils';
 
@@ -75,7 +76,7 @@ export function mergePages(pages, cols = 2) {
   return c.toDataURL('image/jpeg', 0.85);
 }
 
-export const sheetImage = (s, pub) => `/api/${pub ? 'public/' : ''}sheets/${s.id}/image?v=${encodeURIComponent(s.updated_at || '')}`;
+export const sheetImage = (s, pub) => withChurch(`/api/${pub ? 'public/' : ''}sheets/${s.id}/image?v=${encodeURIComponent(s.updated_at || '')}`);
 
 function SheetEditor({ initial, onSaved, onCancel }) {
   const [v, setV] = useState(initial);

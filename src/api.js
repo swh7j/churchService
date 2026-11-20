@@ -1,7 +1,10 @@
+import { CHURCH } from './church';
+
 async function request(method, url, body) {
   const res = await fetch('/api' + url, {
     method,
-    headers: body ? { 'Content-Type': 'application/json' } : {},
+    // 어느 교회 데이터인지 (서버 ChurchFilter)
+    headers: { ...(body ? { 'Content-Type': 'application/json' } : {}), ...(CHURCH ? { 'X-Church': CHURCH } : {}) },
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await res.json().catch(() => null);

@@ -1,11 +1,15 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
+import { CHURCH, REST, rememberChurch } from './church';
+import ChurchSelect from './public/ChurchSelect';
 import PublicApp from './public/PublicApp';
 import './styles.css';
 
-// /admin 으로 시작하면 관리자 화면, 그 외에는 성도 화면
-const path = window.location.pathname;
-const isAdmin = path === '/admin' || path.startsWith('/admin/');
+// 주소: /c/{교회코드} → 성도 화면, /c/{교회코드}/admin → 관리자 화면, 그 외 → 교회 선택
+const isAdmin = REST === '/admin' || REST.startsWith('/admin/');
+if (CHURCH) rememberChurch(CHURCH);
 
-createRoot(document.getElementById('root')).render(<StrictMode>{isAdmin ? <App /> : <PublicApp />}</StrictMode>);
+createRoot(document.getElementById('root')).render(
+  <StrictMode>{!CHURCH ? <ChurchSelect /> : isAdmin ? <App /> : <PublicApp />}</StrictMode>,
+);

@@ -1,6 +1,7 @@
 // 예배 PPT 만들기: 올려 둔 서식 PPT 의 자리 표시를 이 주보 내용으로 채워 .pptx 로 내려받음
 import { useEffect, useState } from 'react';
 import { api } from '../../api';
+import { withChurch } from '../../church';
 import { kdate } from '../../utils';
 import { parseLayout } from './layout';
 import { fillTemplate, NEWS_KEY, templateKeys } from './pptx';
@@ -50,7 +51,7 @@ export default function WorshipPpt({ b }) {
     const i = await api.get('/worship-ppt');
     setInfo(i);
     if (!i.name) return;
-    const res = await fetch('/api/worship-ppt/file');
+    const res = await fetch(withChurch('/api/worship-ppt/file'));
     if (!res.ok) throw new Error('서식 PPT를 받지 못했습니다.');
     const ab = await res.arrayBuffer();
     setBuf(ab);
@@ -80,7 +81,7 @@ export default function WorshipPpt({ b }) {
     if (!f) return;
     setBusy('서식 올리는 중…');
     try {
-      const res = await fetch('/api/worship-ppt/file?name=' + encodeURIComponent(f.name), {
+      const res = await fetch(withChurch('/api/worship-ppt/file?name=' + encodeURIComponent(f.name)), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/octet-stream' },
         body: f,
@@ -132,7 +133,7 @@ export default function WorshipPpt({ b }) {
           {info === null ? <span className="muted">불러오는 중…</span> : info.name ? <span>{info.name} <span className="muted small">({info.updated_at} 올림)</span></span> : <span className="muted">아직 올리지 않았습니다</span>}
         </div>
         <div className="row-actions">
-          {info?.name && <a className="btn sm" href="/api/worship-ppt/file" download={info.name}>서식 받기</a>}
+          {info?.name && <a className="btn sm" href={withChurch('/api/worship-ppt/file')} download={info.name}>서식 받기</a>}
           <label className="btn sm">
             <input type="file" accept=".pptx" hidden onChange={upload} disabled={!!busy} />
             {info?.name ? '서식 바꾸기' : '서식 올리기'}

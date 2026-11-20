@@ -1,5 +1,6 @@
 // 성도 화면 익명 기도제목 관리: 비밀번호를 잊은 글, 부적절한 글을 비밀번호 없이 삭제
 import { api } from '../api';
+import { churchPath } from '../church';
 import { Card, confirmDelete, PageHeader, useList } from '../components';
 
 export default function Prayers() {
@@ -12,7 +13,7 @@ export default function Prayers() {
   return (
     <>
       <PageHeader title="기도제목 게시판" desc={`성도 화면에서 익명으로 올린 기도제목 ${rows.length}개`}>
-        <a className="btn" href="/prayers" target="_blank" rel="noreferrer">성도 화면에서 보기 ↗</a>
+        <a className="btn" href={churchPath('/prayers')} target="_blank" rel="noreferrer">성도 화면에서 보기 ↗</a>
       </PageHeader>
       <Card>
         <div className="table-wrap">

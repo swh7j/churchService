@@ -2,9 +2,10 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api } from '../api';
+import { withChurch } from '../church';
 import { kdate } from '../utils';
 
-const imageUrl = (s) => `/api/public/sheets/${s.id}/image?v=${encodeURIComponent(s.updated_at || '')}`;
+const imageUrl = (s) => withChurch(`/api/public/sheets/${s.id}/image?v=${encodeURIComponent(s.updated_at || '')}`);
 
 function useLoad(url) {
   const [state, setState] = useState({ data: null, error: null });

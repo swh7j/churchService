@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { api } from '../api';
+import { churchPath } from '../church';
 
 export default function Login({ auth, onDone }) {
   const setup = !!auth.setupRequired;
@@ -42,9 +43,9 @@ export default function Login({ auth, onDone }) {
 
         {needToken && (
           <div className="field">
-            <label htmlFor="l_token">설치 코드</label>
+            <label htmlFor="l_token">등록 코드</label>
             <input id="l_token" value={f.setupToken} onChange={set('setupToken')} required autoComplete="off" autoFocus />
-            <small className="muted">서버 설치가 끝날 때 화면에 나온 8자리 코드</small>
+            <small className="muted">교회를 등록할 때 받은 8자리 코드</small>
           </div>
         )}
         {setup && (
@@ -71,7 +72,8 @@ export default function Login({ auth, onDone }) {
         )}
         {err && <p className="login-error" role="alert">{err}</p>}
         <button className="btn primary block" disabled={busy}>{setup ? '관리자 계정 만들기' : '로그인'}</button>
-        <a className="login-back" href="/">← 성도 화면으로</a>
+        <a className="login-back" href={churchPath('/')}>← 성도 화면으로</a>
+        <a className="login-back" href="/?pick=1">다른 교회 선택</a>
       </form>
     </div>
   );

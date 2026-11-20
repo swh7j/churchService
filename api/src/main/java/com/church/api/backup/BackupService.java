@@ -27,12 +27,16 @@ import org.sqlite.SQLiteConfig;
 
 import com.church.api.common.Api;
 import com.church.api.common.ApiException;
+import com.church.api.tenant.ChurchContext;
+import com.church.api.tenant.ChurchRegistry;
+import com.church.api.tenant.ChurchRegistry.Church;
 
 /**
  * 백업 / 복원
  * - 백업: SQLite "VACUUM INTO" 로 사용 중에도 일관된 복사본 생성
  * - 복원: sqlite-jdbc 의 "restore from" (SQLite 온라인 백업 API) 로 현재 DB 내용을 교체
  * - 자동 백업: 서버가 켜져 있으면 하루 한 번, 최근 30개 보관
+ * - 교회마다 백업 폴더가 따로 있음 (backups/{교회 코드}, 처음부터 쓰던 교회는 backups 바로 아래)
  */
 @Service
 public class BackupService {
@@ -43,18 +47,23 @@ public class BackupService {
 	private static final int KEEP_AUTO = 30;
 
 	private final JdbcTemplate jdbc;
-	private final Path dir;
+	private final Path root;
+	private final ChurchRegistry churches;
 
-	public BackupService(JdbcTemplate jdbc, @Value("${app.backup-dir}") String backupDir) {
+	public BackupService(JdbcTemplate jdbc, ChurchRegistry churches, @Value("${app.backup-dir}") String backupDir) {
 		this.jdbc = jdbc;
-		this.dir = Path.of(backupDir).toAbsolutePath().normalize();
+		this.churches = churches;
+		this.root = Path.of(backupDir).toAbsolutePath().normalize();
 	}
 
+	/** 지금 교회의 백업 폴더 */
 	public Path dir() {
-		return dir;
+		Church c = churches.current();
+		return c.legacy() ? root : root.resolve(c.code());
 	}
 
 	public List<Map<String, Object>> list() {
+		Path dir = dir();
 		if (!Files.isDirectory(dir)) return List.of();
 		List<Map<String, Object>> out = new ArrayList<>();
 		try (Stream<Path> files = Files.list(dir)) {
@@ -75,6 +84,7 @@ public class BackupService {
 	}
 
 	public synchronized Map<String, Object> create(String kind) {
+		Path dir = dir();
 		try {
 			Files.createDirectories(dir);
 		} catch (IOException e) {
@@ -94,7 +104,7 @@ public class BackupService {
 	/** 이름 검사 후 실제 파일 경로 (다른 폴더의 파일에 접근하지 못하게) */
 	public Path path(String name) {
 		if (name == null || !NAME.matcher(name).matches()) throw ApiException.bad("잘못된 백업 파일 이름입니다.");
-		Path p = dir.resolve(name);
+		Path p = dir().resolve(name);
 		if (!Files.isRegularFile(p)) throw ApiException.notFound("백업 파일을 찾을 수 없습니다.");
 		return p;
 	}
@@ -132,13 +142,19 @@ public class BackupService {
 	/** 1시간마다 확인해서 마지막 자동 백업이 24시간 지났으면 백업 */
 	@Scheduled(initialDelay = 5_000, fixedDelay = 3_600_000)
 	public void autoBackup() {
+		for (Church c : churches.all()) {
+			if (c.active()) ChurchContext.run(c.code(), this::autoBackupCurrent);
+		}
+	}
+
+	private void autoBackupCurrent() {
 		try {
 			var last = list().stream().filter(b -> "auto".equals(b.get("kind"))).findFirst();
 			boolean due = last.isEmpty() || Duration.between(
 					LocalDateTime.parse(((String) last.get().get("created_at")).replace(' ', 'T')), LocalDateTime.now()).toHours() >= 24;
-			if (due) log.info("자동 백업 완료: {}", create("auto").get("name"));
+			if (due) log.info("자동 백업 완료: {} {}", ChurchContext.get(), create("auto").get("name"));
 		} catch (Exception e) {
-			log.error("자동 백업 실패: {}", e.getMessage());
+			log.error("자동 백업 실패: {} {}", ChurchContext.get(), e.getMessage());
 		}
 	}
 }

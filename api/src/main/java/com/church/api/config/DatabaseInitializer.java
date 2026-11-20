@@ -13,30 +13,32 @@ import org.slf4j.LoggerFactory;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
-import org.springframework.stereotype.Component;
 
 /**
- * 앱 시작 시 테이블을 만들고(schema.sql), 처음 만든 DB라면 기본 분류 항목을 넣습니다.
- * 기존 data/church.db 가 있으면 그대로 사용합니다.
+ * 교회 DB를 처음 열 때 테이블을 만들고(schema.sql), 처음 만든 DB라면 기본 분류 항목을 넣습니다.
+ * 기존 DB는 빠진 컬럼만 추가합니다. (ChurchDataSource 가 교회마다 한 번 호출)
  */
-@Component
-public class DatabaseInitializer {
+public final class DatabaseInitializer {
 
 	private static final Logger log = LoggerFactory.getLogger(DatabaseInitializer.class);
 
-	public DatabaseInitializer(DataSource dataSource, JdbcTemplate jdbc) {
+	private DatabaseInitializer() {
+	}
+
+	public static void init(DataSource dataSource, String churchName) {
+		JdbcTemplate jdbc = new JdbcTemplate(dataSource);
 		new ResourceDatabasePopulator(new ClassPathResource("schema.sql")).execute(dataSource);
 		migrate(jdbc);
 
 		Integer types = jdbc.queryForObject("SELECT COUNT(*) FROM offering_types", Integer.class);
 		if (types != null && types == 0) {
-			insertDefaults(jdbc);
-			log.info("새 데이터베이스에 기본 항목을 넣었습니다.");
+			insertDefaults(jdbc, churchName);
+			log.info("새 데이터베이스에 기본 항목을 넣었습니다. ({})", churchName);
 		}
 	}
 
 	/** 기존 DB에 새 컬럼 추가 (이미 있으면 건너뜀) */
-	private void migrate(JdbcTemplate jdbc) {
+	private static void migrate(JdbcTemplate jdbc) {
 		for (String table : List.of("news", "bulletins", "events")) {
 			List<String> cols = jdbc.queryForList("SELECT name FROM pragma_table_info(?)", String.class, table);
 			if (!cols.contains("is_public")) {
@@ -95,8 +97,8 @@ public class DatabaseInitializer {
 		if (moved > 0) log.info("메모의 생일 {}건을 생일 칸으로 옮겼습니다.", moved);
 	}
 
-	private void insertDefaults(JdbcTemplate jdbc) {
-		jdbc.update("INSERT OR IGNORE INTO settings (key, value) VALUES ('church_name', '우리교회')");
+	private static void insertDefaults(JdbcTemplate jdbc, String churchName) {
+		jdbc.update("INSERT OR IGNORE INTO settings (key, value) VALUES ('church_name', ?)", churchName == null || churchName.isBlank() ? "우리교회" : churchName);
 		List<String> types = List.of("십일조", "주일헌금", "감사헌금", "건축헌금", "선교헌금", "절기헌금");
 		for (int i = 0; i < types.size(); i++) jdbc.update("INSERT INTO offering_types (name, sort) VALUES (?, ?)", types.get(i), i + 1);
 		List<String> income = List.of("전기이월금", "이자수입", "기타수입");

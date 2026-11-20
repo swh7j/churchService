@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api';
+import { withChurch } from '../church';
 import { askConfirm, Badge, Card, confirmDelete, PageHeader } from '../components';
 
 const KIND = { auto: ['자동', 'blue'], manual: ['수동', 'green'], 'before-restore': ['복원 직전', 'amber'] };
@@ -69,7 +70,7 @@ export default function Backup() {
                   <td><Badge tone={KIND[b.kind][1]}>{KIND[b.kind][0]}</Badge></td>
                   <td className="num">{size(b.size)}</td>
                   <td className="row-actions">
-                    <a className="btn sm" href={`/api/backups/${encodeURIComponent(b.name)}/download`} download>다운로드</a>
+                    <a className="btn sm" href={withChurch(`/api/backups/${encodeURIComponent(b.name)}/download`)} download>다운로드</a>
                     <button className="btn sm" onClick={() => restore(b)}>이 시점으로 복원</button>
                     <button className="btn sm danger" onClick={() => remove(b)}>삭제</button>
                   </td>

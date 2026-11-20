@@ -37,6 +37,7 @@ public class SecurityConfig {
 				.authorizeHttpRequests(a -> a
 						.requestMatchers("/api/auth/me", "/api/auth/setup", "/api/auth/login", "/api/auth/logout").permitAll()
 						.requestMatchers(HttpMethod.GET, "/api/public/**").permitAll() // 성도 화면 (조회만)
+						.requestMatchers(HttpMethod.GET, "/api/churches").permitAll() // 교회 선택 화면
 						// 성도 화면 익명 기도제목: 작성, 비밀번호로 삭제
 						.requestMatchers(HttpMethod.POST, "/api/public/prayers", "/api/public/prayers/*/delete").permitAll()
 						.requestMatchers("/api/**").authenticated()

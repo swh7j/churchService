@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Link, NavLink, Route, Routes, useParams } from 'react-router-dom';
 import { api } from '../api';
+import { BASE, churchPath } from '../church';
 import { BulletinView } from '../pages/Bulletins';
 import BulletinSheets from '../pages/bulletin/BulletinSheets';
 import { parseLayout, parseTemplate } from '../pages/bulletin/layout';
@@ -40,7 +41,7 @@ export default function PublicApp() {
   }, [church]);
 
   return (
-    <BrowserRouter>
+    <BrowserRouter basename={BASE || '/'}>
       <div className="pub">
         <header className="pub-head">
           <Link to="/" className="pub-brand">
@@ -71,7 +72,7 @@ export default function PublicApp() {
         </main>
         <footer className="pub-foot no-print">
           <span>{church}</span>
-          <a href="/admin">관리자 로그인</a>
+          <a href={churchPath('/admin')}>관리자 로그인</a> · <a href="/?pick=1">다른 교회</a>
         </footer>
       </div>
     </BrowserRouter>

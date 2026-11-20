@@ -16,6 +16,10 @@ import org.springframework.web.bind.annotation.RestController;
 import com.church.api.audit.AuditService;
 import com.church.api.common.Api;
 import com.church.api.common.ApiException;
+import com.church.api.tenant.ChurchContext;
+import com.church.api.tenant.ChurchRegistry;
+import com.church.api.tenant.ChurchRegistry.Church;
+import com.church.api.tenant.PlatformController;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -28,12 +32,14 @@ public class AuthController {
 	private final SessionService sessions;
 	private final LoginGuard guard;
 	private final AuditService audit;
+	private final ChurchRegistry churches;
 
 	/** 서버 설치 시 정한 설치 코드. 있으면 최초 관리자 생성에 이 코드가 필요 (설치 직후 남이 먼저 가입하는 것 방지) */
 	private final String setupToken;
 
-	public AuthController(JdbcTemplate jdbc, SessionService sessions, LoginGuard guard, AuditService audit,
+	public AuthController(JdbcTemplate jdbc, SessionService sessions, LoginGuard guard, AuditService audit, ChurchRegistry churches,
 			@Value("${app.setup-token:}") String setupToken) {
+		this.churches = churches;
 		this.jdbc = jdbc;
 		this.sessions = sessions;
 		this.guard = guard;
@@ -43,6 +49,17 @@ public class AuthController {
 
 	private int userCount() {
 		return jdbc.queryForObject("SELECT COUNT(*) FROM users", Integer.class);
+	}
+
+	/** 첫 관리자 계정 코드: 처음부터 쓰던 교회는 서버 설치 코드, 새 교회는 교회를 만들 때 정해진 코드 */
+	private String setupCode() {
+		Church c = churches.current();
+		return c.legacy() ? setupToken : c.setupCode() == null ? "" : c.setupCode();
+	}
+
+	/** 로그인 실패 횟수는 교회별로 셈 */
+	private static String guardKey(String key) {
+		return ChurchContext.get() + ":" + key;
 	}
 
 	private String churchName() {
@@ -55,21 +72,25 @@ public class AuthController {
 	public Map<String, Object> me(HttpServletRequest req) {
 		AuthUser u = sessions.current(req);
 		boolean setupRequired = userCount() == 0;
-		return Api.map("setupRequired", setupRequired, "setupTokenRequired", setupRequired && !setupToken.isEmpty(),
-				"churchName", churchName(), "user", u == null ? null : u.toPublic());
+		Church c = churches.current();
+		return Api.map("setupRequired", setupRequired, "setupTokenRequired", setupRequired && !setupCode().isEmpty(),
+				"churchName", churchName(), "church", Api.map("code", c.code(), "name", c.name()),
+				"platform", u != null && PlatformController.isPlatformAdmin(u, churches),
+				"user", u == null ? null : u.toPublic());
 	}
 
 	/** 최초 실행: 사용자가 한 명도 없을 때만 관리자 계정을 만들 수 있음 */
 	@PostMapping("/setup")
 	public synchronized Map<String, Object> setup(@RequestBody Map<String, Object> body, HttpServletRequest req, HttpServletResponse res) {
 		if (userCount() > 0) throw ApiException.bad("이미 관리자 계정이 있습니다. 로그인해 주세요.");
-		if (!setupToken.isEmpty()) {
-			int locked = guard.lockedMinutes("__setup__");
+		String code = setupCode();
+		if (!code.isEmpty()) {
+			int locked = guard.lockedMinutes(guardKey("__setup__"));
 			if (locked > 0) throw new ApiException(429, "설치 코드 입력 실패가 반복되어 잠겼습니다. " + locked + "분 후 다시 시도해 주세요.");
 			byte[] given = Api.str(body.get("setupToken")).trim().getBytes(StandardCharsets.UTF_8);
-			if (!MessageDigest.isEqual(given, setupToken.getBytes(StandardCharsets.UTF_8))) {
-				guard.fail("__setup__");
-				throw ApiException.bad("설치 코드가 맞지 않습니다. 서버 설치 때 화면에 나온 코드를 입력해 주세요.");
+			if (!MessageDigest.isEqual(given, code.getBytes(StandardCharsets.UTF_8))) {
+				guard.fail(guardKey("__setup__"));
+				throw ApiException.bad("설치 코드가 맞지 않습니다. 교회를 등록할 때 받은 8자리 코드를 입력해 주세요.");
 			}
 		}
 		String username = Api.str(body.get("username")).trim();
@@ -82,6 +103,7 @@ public class AuthController {
 		long id = jdbc.queryForObject("SELECT id FROM users WHERE username = ?", Long.class, username);
 		sessions.start(req, res, id);
 		audit.log(new AuthUser(id, username, name, "admin"), "계정 생성", "users", id, "최초 관리자");
+		churches.clearSetupCode(ChurchContext.get());
 		return Map.of("ok", true);
 	}
 
@@ -89,7 +111,7 @@ public class AuthController {
 	public Map<String, Object> login(@RequestBody Map<String, Object> body, HttpServletRequest req, HttpServletResponse res) {
 		String username = Api.str(body.get("username")).trim();
 		String password = Api.str(body.get("password"));
-		String key = username.toLowerCase();
+		String key = guardKey(username.toLowerCase());
 		int locked = guard.lockedMinutes(key);
 		if (locked > 0) throw new ApiException(429, "로그인 실패가 반복되어 잠겼습니다. " + locked + "분 후 다시 시도해 주세요.");
 

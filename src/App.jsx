@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { BrowserRouter, NavLink, Route, Routes, useLocation } from 'react-router-dom';
 import { api } from './api';
+import { BASE, churchPath } from './church';
 import { AppCtx, canDo, Form, Loading, Modal } from './components';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -19,6 +20,7 @@ import Settings from './pages/Settings';
 import Users from './pages/Users';
 import Backup from './pages/Backup';
 import Audit from './pages/Audit';
+import Churches from './pages/Churches';
 
 // [경로, 메뉴 이름, 화면, 필요한 영역]
 const NAV = [
@@ -44,6 +46,7 @@ const NAV = [
       ['/backup', '백업·복원', Backup, 'admin'],
       ['/audit', '활동 기록', Audit, 'admin'],
       ['/settings', '설정', Settings, 'admin'],
+      ['/churches', '교회 관리 (전체)', Churches, 'platform'],
     ],
   },
 ];
@@ -59,7 +62,8 @@ function Main({ user, onLogout }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [pwOpen, setPwOpen] = useState(false);
   const location = useLocation();
-  const can = useCallback((area) => canDo(user, area), [user]);
+  // 'platform' = 전체 관리자 (교회 등록)
+  const can = useCallback((area) => (area === 'platform' ? !!user.platform : canDo(user, area)), [user]);
   const reloadSettings = useCallback(() => api.get('/settings').then(setSettings).catch(() => {}), []);
   useEffect(() => {
     reloadSettings();
@@ -106,7 +110,7 @@ function Main({ user, onLogout }) {
               );
             })}
           </nav>
-          <a className="public-link" href="/" target="_blank" rel="noreferrer">성도 화면 보기 ↗</a>
+          <a className="public-link" href={churchPath('/')} target="_blank" rel="noreferrer">성도 화면 보기 ↗</a>
           <div className="account">
             <div className="account-name">{user.name}</div>
             <div className="account-role">{user.roleLabel} · {user.username}</div>
@@ -155,13 +159,13 @@ function Shell() {
 
   if (!auth) return <Loading />;
   if (!auth.user) return <Login auth={auth} onDone={loadMe} />;
-  return <Main key={auth.user.id} user={auth.user} onLogout={logout} />;
+  return <Main key={auth.user.id} user={{ ...auth.user, platform: !!auth.platform }} onLogout={logout} />;
 }
 
-// 관리자 화면은 /admin 아래 (메뉴 경로 '/members' → 실제 주소 '/admin/members')
+// 관리자 화면은 /c/교회코드/admin 아래 (메뉴 경로 '/members' → 실제 주소 '/c/코드/admin/members')
 export default function App() {
   return (
-    <BrowserRouter basename="/admin">
+    <BrowserRouter basename={`${BASE}/admin`}>
       <Shell />
     </BrowserRouter>
   );

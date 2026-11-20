@@ -18,6 +18,8 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
+import com.church.api.tenant.ChurchContext;
+
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -29,7 +31,7 @@ import jakarta.servlet.http.HttpServletResponse;
 @Service
 public class SessionService {
 
-	private static final String COOKIE = "sid";
+	private static final String COOKIE = "sid_"; // + 교회 코드
 	private static final Duration TTL = Duration.ofHours(12); // 마지막 사용 후 12시간 지나면 로그아웃
 	private static final DateTimeFormatter ISO = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC);
 	private static final SecureRandom RNG = new SecureRandom();
@@ -61,8 +63,13 @@ public class SessionService {
 	private static String readToken(HttpServletRequest req) {
 		Cookie[] cookies = req.getCookies();
 		if (cookies == null) return null;
-		for (Cookie c : cookies) if (COOKIE.equals(c.getName())) return c.getValue();
+		for (Cookie c : cookies) if (cookieName().equals(c.getName())) return c.getValue();
 		return null;
+	}
+
+	/** 교회마다 다른 쿠키 이름 */
+	private static String cookieName() {
+		return COOKIE + ChurchContext.get();
 	}
 
 	public void start(HttpServletRequest req, HttpServletResponse res, long userId) {
@@ -72,7 +79,7 @@ public class SessionService {
 		jdbc.update("INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)", sha256(token), userId, expiry());
 		jdbc.update("UPDATE users SET last_login = datetime('now','localtime') WHERE id = ?", userId);
 		jdbc.update("DELETE FROM sessions WHERE expires_at < ?", now());
-		ResponseCookie cookie = ResponseCookie.from(COOKIE, token)
+		ResponseCookie cookie = ResponseCookie.from(cookieName(), token)
 				.httpOnly(true) // 자바스크립트에서 읽을 수 없게
 				.sameSite("Lax")
 				.secure(req.isSecure() || forceSecure) // HTTPS 배포 시
@@ -84,7 +91,7 @@ public class SessionService {
 	public void end(HttpServletRequest req, HttpServletResponse res) {
 		String token = readToken(req);
 		if (token != null) jdbc.update("DELETE FROM sessions WHERE token_hash = ?", sha256(token));
-		res.addHeader(HttpHeaders.SET_COOKIE, ResponseCookie.from(COOKIE, "").path("/").maxAge(0).build().toString());
+		res.addHeader(HttpHeaders.SET_COOKIE, ResponseCookie.from(cookieName(), "").path("/").maxAge(0).build().toString());
 	}
 
 	public void endAllFor(long userId) {
