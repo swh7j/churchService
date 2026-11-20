@@ -139,9 +139,11 @@ function NewsList({ items }) {
   if (!items.length) return <p className="pub-empty">등록된 소식이 없습니다.</p>;
   return (
     <ul className="pub-news">
-      {items.map((n) => (
-        <li key={n.id} className={n.pinned ? 'pinned' : ''}>
-          <button onClick={() => setOpen(open === n.id ? null : n.id)} aria-expanded={open === n.id}>
+      {items.map((n) => {
+        const key = `${n.kind || 'news'}-${n.id}`;
+        return (
+        <li key={key} className={n.pinned ? 'pinned' : ''}>
+          <button onClick={() => setOpen(open === key ? null : key)} aria-expanded={open === key}>
             <span className="pub-news-title">
               {!!n.pinned && <span className="tag red">공지</span>}
               {!n.pinned && n.category && <span className="tag">{n.category}</span>}
@@ -149,9 +151,20 @@ function NewsList({ items }) {
             </span>
             <span className="pub-date">{n.date}</span>
           </button>
-          {open === n.id && n.content && <p className="pub-news-body">{n.content}</p>}
+          {open === key && n.content && (
+            <p className="pub-news-body">
+              {n.content}
+              {n.kind === 'prayer' && (
+                <>
+                  <br />
+                  <span className="pub-date">— {n.nickname || '익명'} · <Link to="/prayers">기도제목 게시판</Link></span>
+                </>
+              )}
+            </p>
+          )}
         </li>
-      ))}
+        );
+      })}
     </ul>
   );
 }

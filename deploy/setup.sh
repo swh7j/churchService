@@ -119,6 +119,10 @@ $DOMAIN {
 		Referrer-Policy "strict-origin-when-cross-origin"
 		-Server
 	}
+	# 화면(HTML)은 매번 새 버전인지 확인 → 업데이트하면 바로 보이도록
+	# (/assets 파일은 빌드할 때마다 이름이 바뀌므로 캐시해도 됨)
+	@page not path /assets/* /api/*
+	header @page Cache-Control "no-cache"
 	reverse_proxy 127.0.0.1:8080
 }
 EOF

@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.church.api.audit.AuditService;
 import com.church.api.auth.LoginGuard;
 import com.church.api.auth.PasswordHasher;
+import com.church.api.auth.Roles;
 import com.church.api.common.Api;
 import com.church.api.common.ApiException;
 
@@ -27,12 +28,17 @@ import jakarta.servlet.http.HttpServletRequest;
  * 익명 기도제목 게시판.
  * - 성도: 로그인 없이 작성 (/api/public/prayers), 작성할 때 정한 비밀번호로 삭제
  * - 교역자·사역 담당·관리자: 비밀번호 없이 강제 삭제 (/api/prayers)
+ * - 비밀 기도제목: 성도 화면에는 '비밀 기도제목'으로만 보이고, 내용·이름은 관리자만 봄
+ *   (교회 소식 목록에도 비밀이 아닌 글만 나감 → PublicController)
  * 비밀번호는 scrypt 로 암호화해 저장하고, 목록에는 절대 내보내지 않습니다.
  */
 @RestController
 public class PrayerController {
 
-	private static final String PUBLIC_COLS = "id, nickname, content, created_at";
+	private static final String PUBLIC_COLS = "id, nickname, content, is_secret, created_at";
+	/** 비밀 글은 이름·내용을 비워서 내보냄 */
+	private static final String MASKED_COLS = "id, CASE WHEN is_secret = 1 THEN NULL ELSE nickname END AS nickname, "
+			+ "CASE WHEN is_secret = 1 THEN NULL ELSE content END AS content, is_secret, created_at";
 	private static final int MAX_CONTENT = 1000;
 	private static final int MAX_NICKNAME = 20;
 	/** 같은 접속(IP)에서 10분에 20개까지만 작성 (도배 방지, 교회 와이파이는 여럿이 같이 쓰므로 넉넉히) */
@@ -54,7 +60,7 @@ public class PrayerController {
 
 	@GetMapping("/api/public/prayers")
 	public List<Map<String, Object>> list() {
-		return jdbc.queryForList("SELECT " + PUBLIC_COLS + " FROM prayers ORDER BY id DESC LIMIT 200");
+		return jdbc.queryForList("SELECT " + MASKED_COLS + " FROM prayers ORDER BY id DESC LIMIT 200");
 	}
 
 	@PostMapping("/api/public/prayers")
@@ -62,16 +68,17 @@ public class PrayerController {
 		String content = Api.str(body.get("content")).trim();
 		String nickname = Api.str(body.get("nickname")).trim();
 		String password = Api.str(body.get("password"));
+		boolean secret = Boolean.TRUE.equals(body.get("secret"));
 		if (content.isEmpty()) throw ApiException.bad("기도제목을 입력해 주세요.");
 		if (content.length() > MAX_CONTENT) throw ApiException.bad("기도제목은 " + MAX_CONTENT + "자까지 쓸 수 있습니다.");
 		if (nickname.length() > MAX_NICKNAME) throw ApiException.bad("이름(별명)은 " + MAX_NICKNAME + "자까지 쓸 수 있습니다.");
 		if (password.length() < 4 || password.length() > 30) throw ApiException.bad("삭제용 비밀번호를 4~30자로 정해 주세요.");
 		checkPostLimit(req.getRemoteAddr());
 
-		jdbc.update("INSERT INTO prayers (nickname, content, password_hash) VALUES (?, ?, ?)",
-				nickname.isEmpty() ? null : nickname, content, PasswordHasher.hash(password));
+		jdbc.update("INSERT INTO prayers (nickname, content, password_hash, is_secret) VALUES (?, ?, ?, ?)",
+				nickname.isEmpty() ? null : nickname, content, PasswordHasher.hash(password), secret ? 1 : 0);
 		Long id = jdbc.queryForObject("SELECT last_insert_rowid()", Long.class);
-		audit.log(null, "기도제목 등록 (성도 화면)", "prayers", id, Api.map("nickname", nickname, "content", content));
+		audit.log(null, "기도제목 등록 (성도 화면)", "prayers", id, Api.map("nickname", nickname, "content", content, "is_secret", secret));
 		return Api.map("ok", true, "id", id);
 	}
 
@@ -111,7 +118,9 @@ public class PrayerController {
 	@GetMapping("/api/prayers")
 	@PreAuthorize("hasAuthority('AREA_church')")
 	public List<Map<String, Object>> adminList() {
-		return jdbc.queryForList("SELECT " + PUBLIC_COLS + " FROM prayers ORDER BY id DESC");
+		// 비밀 기도제목 내용은 관리자만, 교역자·사역 담당에게는 가려서 보냄 (삭제는 가능)
+		boolean admin = Roles.has(Roles.current(), "admin");
+		return jdbc.queryForList("SELECT " + (admin ? PUBLIC_COLS : MASKED_COLS) + " FROM prayers ORDER BY id DESC");
 	}
 
 	@DeleteMapping("/api/prayers/{id}")

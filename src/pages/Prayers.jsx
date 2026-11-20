@@ -5,7 +5,7 @@ import { Card, confirmDelete, PageHeader, useList } from '../components';
 export default function Prayers() {
   const { rows, reload } = useList('/prayers');
   const remove = (p) =>
-    confirmDelete(`이 기도제목을 삭제할까요? 성도 화면에서도 바로 사라집니다.\n\n${p.content.slice(0, 80)}`, () => api.del(`/prayers/${p.id}`)).then(
+    confirmDelete(`이 기도제목을 삭제할까요? 성도 화면에서도 바로 사라집니다.\n\n${(p.content ?? '비밀 기도제목').slice(0, 80)}`, () => api.del(`/prayers/${p.id}`)).then(
       (ok) => ok && reload(),
     );
 
@@ -29,8 +29,11 @@ export default function Prayers() {
               {rows.map((p) => (
                 <tr key={p.id}>
                   <td style={{ whiteSpace: 'nowrap' }}>{p.created_at?.slice(0, 16)}</td>
-                  <td style={{ whiteSpace: 'nowrap' }}>{p.nickname || '익명'}</td>
-                  <td style={{ whiteSpace: 'pre-wrap', minWidth: 220 }}>{p.content}</td>
+                  <td style={{ whiteSpace: 'nowrap' }}>{p.nickname || (p.is_secret && p.content == null ? '-' : '익명')}</td>
+                  <td style={{ whiteSpace: 'pre-wrap', minWidth: 220 }}>
+                    {!!p.is_secret && <span className="tag red">비밀</span>}
+                    {p.content ?? <span className="muted">관리자만 볼 수 있는 비밀 기도제목입니다.</span>}
+                  </td>
                   <td className="row-actions">
                     <button className="btn sm danger" onClick={() => remove(p)}>강제 삭제</button>
                   </td>
@@ -44,7 +47,7 @@ export default function Prayers() {
             </tbody>
           </table>
         </div>
-        <p className="muted small">작성자는 글을 올릴 때 정한 비밀번호로 직접 지울 수 있습니다. 비밀번호를 잊었거나 부적절한 글은 여기서 지우세요. 지운 내용은 활동 기록에 남습니다.</p>
+        <p className="muted small">작성자는 글을 올릴 때 정한 비밀번호로 직접 지울 수 있습니다. 비밀번호를 잊었거나 부적절한 글은 여기서 지우세요. 🔒 비밀 기도제목은 관리자 계정에서만 내용이 보이고, 교회 소식에는 비밀이 아닌 글만 올라갑니다. 지운 내용은 활동 기록에 남습니다.</p>
       </Card>
     </>
   );

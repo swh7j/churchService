@@ -168,5 +168,6 @@ CREATE TABLE IF NOT EXISTS prayers (
   nickname TEXT,
   content TEXT NOT NULL,
   password_hash TEXT NOT NULL,
+  is_secret INTEGER NOT NULL DEFAULT 0,  -- 비밀 기도제목: 관리자만 내용을 봄
   created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );

@@ -11,7 +11,7 @@ const when = (s) => {
 };
 
 function PrayerForm({ onDone }) {
-  const [v, setV] = useState({ nickname: '', content: '', password: '' });
+  const [v, setV] = useState({ nickname: '', content: '', password: '', secret: false });
   const [busy, setBusy] = useState(false);
   const set = (k) => (e) => setV((x) => ({ ...x, [k]: e.target.value }));
 
@@ -20,7 +20,7 @@ function PrayerForm({ onDone }) {
     setBusy(true);
     try {
       await api.post('/public/prayers', v);
-      setV({ nickname: '', content: '', password: '' });
+      setV({ nickname: '', content: '', password: '', secret: false });
       onDone();
     } catch (err) {
       alert(err.message);
@@ -37,7 +37,11 @@ function PrayerForm({ onDone }) {
         <input type="password" value={v.password} onChange={set('password')} minLength={4} maxLength={30} required placeholder="삭제 비밀번호 4자+" aria-label="삭제용 비밀번호" autoComplete="new-password" />
         <button className="pub-btn small" disabled={busy}>올리기</button>
       </div>
-      <p className="pr-help">비밀번호는 나중에 이 글을 지울 때 필요합니다. 잊어버리면 교회 사무실에 말씀해 주세요.</p>
+      <label className="pr-secret">
+        <input type="checkbox" checked={v.secret} onChange={(e) => setV((x) => ({ ...x, secret: e.target.checked }))} />
+        🔒 비밀로 올리기 <span>(관리자만 볼 수 있고, 교회 소식에도 나가지 않습니다)</span>
+      </label>
+      <p className="pr-help">비밀이 아닌 기도제목은 교회 소식에도 함께 올라갑니다. 비밀번호는 나중에 이 글을 지울 때 필요하며, 잊어버리면 교회 사무실에 말씀해 주세요.</p>
     </form>
   );
 }
@@ -63,10 +67,10 @@ function PrayerItem({ p, onDeleted }) {
   return (
     <li className="pr-item">
       <div className="pr-meta">
-        <strong>{p.nickname || '익명'}</strong>
+        <strong>{p.is_secret ? '🔒 비밀 기도제목' : p.nickname || '익명'}</strong>
         <span className="pub-date">{when(p.created_at)}</span>
       </div>
-      <p className="pr-content">{p.content}</p>
+      {p.is_secret ? <p className="pr-content pr-muted">관리자만 볼 수 있는 기도제목입니다.</p> : <p className="pr-content">{p.content}</p>}
       {asking ? (
         <form className="pr-del" onSubmit={remove}>
           <input type="password" autoFocus value={pw} onChange={(e) => setPw(e.target.value)} placeholder="작성할 때 정한 비밀번호" aria-label="삭제용 비밀번호" autoComplete="off" />

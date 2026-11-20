@@ -54,6 +54,12 @@ public class DatabaseInitializer {
 			}
 		}
 
+		// 비밀 기도제목 (관리자만 내용을 봄)
+		if (!jdbc.queryForList("SELECT name FROM pragma_table_info('prayers')", String.class).contains("is_secret")) {
+			jdbc.execute("ALTER TABLE prayers ADD COLUMN is_secret INTEGER NOT NULL DEFAULT 0");
+			log.info("prayers 테이블에 is_secret(비밀 기도제목) 컬럼을 추가했습니다.");
+		}
+
 		// 교인 생일 칸 (월·일·음력 여부·성도 화면 공개 여부)
 		List<String> mcols = jdbc.queryForList("SELECT name FROM pragma_table_info('members')", String.class);
 		Map<String, String> add = new LinkedHashMap<>();

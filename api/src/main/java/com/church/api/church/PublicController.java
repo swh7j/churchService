@@ -58,11 +58,22 @@ public class PublicController {
 				"birthdays", birthdays.inMonth(YearMonth.now(), true));
 	}
 
+	/**
+	 * 교회 소식 목록. 성도가 올린 기도제목(비밀글 제외)도 '기도제목' 분류로 함께 보여 줌.
+	 * 기도제목은 이름·내용만 (비밀번호 등은 내보내지 않음)
+	 */
+	private static final String NEWS_WITH_PRAYERS = "SELECT " + NEWS_COLS + ", 'news' AS kind, NULL AS nickname FROM news WHERE is_public = 1 %s"
+			+ " UNION ALL SELECT id, substr(replace(content, char(10), ' '), 1, 40), '기도제목', content, 0, substr(created_at, 1, 10), 'prayer', nickname"
+			+ " FROM prayers WHERE is_secret = 0 %s"
+			+ " ORDER BY pinned DESC, date DESC, id DESC LIMIT 100";
+
 	@GetMapping("/news")
 	public List<Map<String, Object>> news(@RequestParam(required = false) String category) {
 		if (category == null || category.isEmpty())
-			return jdbc.queryForList("SELECT " + NEWS_COLS + " FROM news WHERE is_public = 1 ORDER BY pinned DESC, date DESC, id DESC LIMIT 100");
-		return jdbc.queryForList("SELECT " + NEWS_COLS + " FROM news WHERE is_public = 1 AND category = ? ORDER BY pinned DESC, date DESC, id DESC LIMIT 100", category);
+			return jdbc.queryForList(NEWS_WITH_PRAYERS.formatted("", ""));
+		if ("기도제목".equals(category))
+			return jdbc.queryForList(NEWS_WITH_PRAYERS.formatted("AND category = ?", ""), category);
+		return jdbc.queryForList(NEWS_WITH_PRAYERS.formatted("AND category = ?", "AND 0"), category);
 	}
 
 	@GetMapping("/bulletins")
