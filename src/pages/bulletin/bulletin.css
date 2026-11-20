@@ -119,4 +119,6 @@
   .bp-sheet { width: 148.5mm; height: 420mm; grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }
   .bp-fit { width: calc(148.5mm * var(--fit, 1)); height: calc(420mm * var(--fit, 1)); }
   .bp-cover { order: -1; }
+  .bp-preview { padding: 6px; }
+  .modal-body:has(.bp-preview) { padding: 8px; }
 }
