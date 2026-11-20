@@ -5,6 +5,7 @@ import { addDays, kdate, nextSunday } from '../utils';
 import BulletinSheets from './bulletin/BulletinSheets';
 import { BulletinEditor, TemplateEditor } from './bulletin/Editors';
 import { parseLayout, parseTemplate } from './bulletin/layout';
+import WorshipPpt from './bulletin/WorshipPpt';
 
 export default function Bulletins() {
   const { settings } = useContext(AppCtx);
@@ -13,6 +14,7 @@ export default function Bulletins() {
   const [viewing, setViewing] = useState(null);
   const [template, setTemplate] = useState(null);
   const [editingTemplate, setEditingTemplate] = useState(false);
+  const [ppt, setPpt] = useState(null);
   const church = settings.church_name || '우리교회';
 
   useEffect(() => {
@@ -64,6 +66,7 @@ export default function Bulletins() {
                   <td>{b.preacher}</td>
                   <td className="row-actions">
                     <button className="btn sm" onClick={() => setViewing(b)}>보기·인쇄</button>
+                    <button className="btn sm" onClick={() => setPpt(b)} title="서식 PPT에 이 주보 내용을 채워 내려받기">예배 PPT</button>
                     <button className="btn sm" onClick={() => edit(b)}>수정</button>
                     <button className="btn sm" onClick={() => copy(b)} title="이 주보를 바탕으로 다음 주 주보 만들기">다음 주로 복사</button>
                     <button className="btn sm danger" onClick={() => remove(b)}>삭제</button>
@@ -79,6 +82,11 @@ export default function Bulletins() {
       {editing && template && (
         <Modal title={editing.id ? '주보 수정' : '주보 작성'} onClose={() => setEditing(null)} wide>
           <BulletinEditor initial={editing} template={template} onSave={save} onCancel={() => setEditing(null)} />
+        </Modal>
+      )}
+      {ppt && (
+        <Modal title={`예배 PPT 만들기 · ${kdate(ppt.date)}`} onClose={() => setPpt(null)} wide>
+          <WorshipPpt b={ppt} />
         </Modal>
       )}
       {editingTemplate && (

@@ -182,3 +182,11 @@ CREATE TABLE IF NOT EXISTS sheets (
   is_public INTEGER NOT NULL DEFAULT 1,  -- 성도 화면 공개 여부
   updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
+
+-- 예배 PPT 서식: 자리 표시({영광송} 등)를 넣은 .pptx 한 개. 주보 내용으로 채워 내려받음
+CREATE TABLE IF NOT EXISTS worship_ppt (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  name TEXT NOT NULL,
+  file BLOB NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
