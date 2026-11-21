@@ -98,6 +98,15 @@ public class ChurchRegistry {
 		cache.putAll(next);
 	}
 
+	/** 교회와 상관없는 전체 데이터(platform.db): 전체 관리자 계정 등 */
+	public JdbcTemplate platformJdbc() {
+		return jdbc;
+	}
+
+	public Path dataDir() {
+		return dataDir;
+	}
+
 	public String defaultCode() {
 		return defaultCode;
 	}

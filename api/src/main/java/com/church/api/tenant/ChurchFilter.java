@@ -39,6 +39,11 @@ public class ChurchFilter extends OncePerRequestFilter {
 		String code = req.getHeader(HEADER);
 		if (code == null || code.isBlank()) code = req.getParameter(PARAM);
 		Church c = registry.find(code);
+		// 전체 관리자 페이지는 교회와 상관없음 (첫 계정을 만들 때만 운영 교회 정보를 같이 보냄)
+		if (uri.startsWith("/api/platform/") && (c == null || !c.active())) {
+			chain.doFilter(req, res);
+			return;
+		}
 		if (c == null || !c.active()) {
 			res.setStatus(c == null ? 400 : 403);
 			res.setContentType("application/json;charset=UTF-8");

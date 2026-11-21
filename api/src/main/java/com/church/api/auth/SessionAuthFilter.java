@@ -7,6 +7,8 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import com.church.api.tenant.ChurchContext;
+
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -23,7 +25,8 @@ public class SessionAuthFilter extends OncePerRequestFilter {
 
 	@Override
 	protected void doFilterInternal(HttpServletRequest req, HttpServletResponse res, FilterChain chain) throws ServletException, IOException {
-		if (req.getRequestURI().startsWith("/api/")) {
+		// 교회가 정해진 요청만 (전체 관리자 페이지는 따로 로그인)
+		if (req.getRequestURI().startsWith("/api/") && ChurchContext.get() != null) {
 			AuthUser u = sessions.current(req);
 			if (u != null) {
 				var authorities = Roles.areas(u.role()).stream().map(a -> new SimpleGrantedAuthority("AREA_" + a)).toList();

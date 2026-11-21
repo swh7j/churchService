@@ -45,6 +45,7 @@ export default function WorshipPpt({ b }) {
   const [busy, setBusy] = useState('');
   const [err, setErr] = useState('');
   const [loading, setLoading] = useState(true);
+  const [common, setCommon] = useState(null); // 전체 관리자가 올린 공통 양식
 
   const loadTemplate = async () => {
     setErr('');
@@ -65,6 +66,7 @@ export default function WorshipPpt({ b }) {
   };
 
   useEffect(() => {
+    api.get('/worship-ppt/common').then(setCommon).catch(() => {});
     api.get('/worship-ppt/hymns').then((r) => setHymns(JSON.parse(r.hymns || '{}'))).catch(() => {});
     reloadTemplate();
   }, []);
@@ -133,6 +135,7 @@ export default function WorshipPpt({ b }) {
           {info === null ? <span className="muted">불러오는 중…</span> : info.name ? <span>{info.name} <span className="muted small">({info.updated_at} 올림)</span></span> : <span className="muted">아직 올리지 않았습니다</span>}
         </div>
         <div className="row-actions">
+          {common?.size ? <a className="btn sm" href={withChurch('/api/worship-ppt/common/file')} download="예배PPT_공통양식.pptx" title="모든 교회가 쓰는 기본 서식">공통 양식 받기</a> : null}
           {info?.name && <a className="btn sm" href={withChurch('/api/worship-ppt/file')} download={info.name}>서식 받기</a>}
           <label className="btn sm">
             <input type="file" accept=".pptx" hidden onChange={upload} disabled={!!busy} />
@@ -141,6 +144,9 @@ export default function WorshipPpt({ b }) {
         </div>
       </div>
       {err && <p className="warn">{err}</p>}
+      {info && !info.name && common?.size ? (
+        <p className="muted small">처음이라면 <strong>공통 양식 받기</strong>로 기본 서식을 받아, 파워포인트에서 교회 이름·표어·배경을 고친 뒤 <strong>서식 올리기</strong>로 올려 주세요.</p>
+      ) : null}
 
       {info?.name && loading && <p className="muted">서식 PPT를 읽는 중…</p>}
       {info?.name && !loading && (

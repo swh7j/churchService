@@ -33,13 +33,15 @@ public class AuthController {
 	private final LoginGuard guard;
 	private final AuditService audit;
 	private final ChurchRegistry churches;
+	private final PlatformController platform;
 
 	/** 서버 설치 시 정한 설치 코드. 있으면 최초 관리자 생성에 이 코드가 필요 (설치 직후 남이 먼저 가입하는 것 방지) */
 	private final String setupToken;
 
-	public AuthController(JdbcTemplate jdbc, SessionService sessions, LoginGuard guard, AuditService audit, ChurchRegistry churches,
+	public AuthController(JdbcTemplate jdbc, SessionService sessions, LoginGuard guard, AuditService audit, ChurchRegistry churches, PlatformController platform,
 			@Value("${app.setup-token:}") String setupToken) {
 		this.churches = churches;
+		this.platform = platform;
 		this.jdbc = jdbc;
 		this.sessions = sessions;
 		this.guard = guard;
@@ -75,7 +77,8 @@ public class AuthController {
 		Church c = churches.current();
 		return Api.map("setupRequired", setupRequired, "setupTokenRequired", setupRequired && !setupCode().isEmpty(),
 				"churchName", churchName(), "church", Api.map("code", c.code(), "name", c.name()),
-				"platform", u != null && PlatformController.isPlatformAdmin(u, churches),
+				// 운영 교회 관리자 + 전체 관리자 계정이 아직 없음 → 전체 관리자 페이지 만들기 안내
+				"platformSetup", platform.canBootstrap(u),
 				"user", u == null ? null : u.toPublic());
 	}
 

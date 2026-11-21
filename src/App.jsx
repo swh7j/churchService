@@ -20,7 +20,6 @@ import Settings from './pages/Settings';
 import Users from './pages/Users';
 import Backup from './pages/Backup';
 import Audit from './pages/Audit';
-import Churches from './pages/Churches';
 
 // [경로, 메뉴 이름, 화면, 필요한 영역]
 const NAV = [
@@ -46,7 +45,6 @@ const NAV = [
       ['/backup', '백업·복원', Backup, 'admin'],
       ['/audit', '활동 기록', Audit, 'admin'],
       ['/settings', '설정', Settings, 'admin'],
-      ['/churches', '교회 관리 (전체)', Churches, 'platform'],
     ],
   },
 ];
@@ -62,8 +60,7 @@ function Main({ user, onLogout }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [pwOpen, setPwOpen] = useState(false);
   const location = useLocation();
-  // 'platform' = 전체 관리자 (교회 등록)
-  const can = useCallback((area) => (area === 'platform' ? !!user.platform : canDo(user, area)), [user]);
+  const can = useCallback((area) => canDo(user, area), [user]);
   const reloadSettings = useCallback(() => api.get('/settings').then(setSettings).catch(() => {}), []);
   useEffect(() => {
     reloadSettings();
@@ -110,6 +107,9 @@ function Main({ user, onLogout }) {
               );
             })}
           </nav>
+          {user.platformSetup && (
+            <a className="public-link" href="/platform" target="_blank" rel="noreferrer">전체 관리자 페이지 만들기 ↗</a>
+          )}
           <a className="public-link" href={churchPath('/')} target="_blank" rel="noreferrer">성도 화면 보기 ↗</a>
           <div className="account">
             <div className="account-name">{user.name}</div>
@@ -159,7 +159,7 @@ function Shell() {
 
   if (!auth) return <Loading />;
   if (!auth.user) return <Login auth={auth} onDone={loadMe} />;
-  return <Main key={auth.user.id} user={{ ...auth.user, platform: !!auth.platform }} onLogout={logout} />;
+  return <Main key={auth.user.id} user={{ ...auth.user, platformSetup: !!auth.platformSetup }} onLogout={logout} />;
 }
 
 // 관리자 화면은 /c/교회코드/admin 아래 (메뉴 경로 '/members' → 실제 주소 '/c/코드/admin/members')

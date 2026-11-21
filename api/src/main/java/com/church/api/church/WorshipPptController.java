@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.RestController;
 import com.church.api.audit.AuditService;
 import com.church.api.common.Api;
 import com.church.api.common.ApiException;
+import com.church.api.tenant.ChurchRegistry;
+import com.church.api.tenant.PlatformController;
 
 /**
  * 예배 PPT. 서식 .pptx 를 보관하고, 채우기는 관리자 화면(브라우저)에서 합니다.
@@ -34,10 +36,24 @@ public class WorshipPptController {
 
 	private final JdbcTemplate jdbc;
 	private final AuditService audit;
+	private final ChurchRegistry churches;
 
-	public WorshipPptController(JdbcTemplate jdbc, AuditService audit) {
+	public WorshipPptController(JdbcTemplate jdbc, AuditService audit, ChurchRegistry churches) {
 		this.jdbc = jdbc;
 		this.audit = audit;
+		this.churches = churches;
+	}
+
+	/** 공통 양식 (전체 관리자가 올린 기본 서식) 정보 */
+	@GetMapping("/common")
+	public Map<String, Object> common() {
+		return PlatformController.commonInfo(churches);
+	}
+
+	/** 공통 양식 받기 */
+	@GetMapping("/common/file")
+	public ResponseEntity<byte[]> commonFile() {
+		return PlatformController.commonFile(churches);
 	}
 
 	/** 올려 둔 서식 정보 (없으면 빈 값) */
