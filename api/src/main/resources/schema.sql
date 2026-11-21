@@ -190,3 +190,13 @@ CREATE TABLE IF NOT EXISTS worship_ppt (
   file BLOB NOT NULL,
   updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
+
+-- 예배 PPT 에 끼워 넣을 화면 (찬송 악보, 교독문). 번호별로 그림들을 zip 하나로 보관
+CREATE TABLE IF NOT EXISTS ppt_inserts (
+  kind TEXT NOT NULL,            -- hymn(찬송가) / reading(교독문)
+  no TEXT NOT NULL,              -- 장·번 번호
+  count INTEGER NOT NULL,        -- 화면 수
+  file BLOB NOT NULL,            -- 그림 zip (001.jpg, 002.png …)
+  updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  PRIMARY KEY (kind, no)
+);

@@ -136,19 +136,31 @@ function fillNews(p, items) {
 /**
  * 서식(buf)에 값(values)을 채운 새 .pptx Blob.
  * values: { '영광송': '62장', '영광송 제목': '고요히 머리숙여', ... , 교회소식: '1. …\n2. …' }
+ * inserts: { '영광송': [{ data: Uint8Array, ext: 'png' }, …] } → {영광송} 이 있는 화면 바로 뒤에 그림 화면으로 넣음
  */
-export async function fillTemplate(buf, values) {
+export async function fillTemplate(buf, values, inserts = {}) {
   const zip = await loadZip(buf);
   const paths = await slidePaths(zip);
   const newsPages = chunkNews(splitNews(values[NEWS_KEY]));
   const fill = (k) => (Object.prototype.hasOwnProperty.call(values, k) ? String(values[k] ?? '') : '');
   const extra = []; // [원래 슬라이드 경로, 새 슬라이드 경로]
+  const done = new Set();
+  const pics = []; // [슬라이드 경로, 그림들]
   let nextNo = Math.max(0, ...Object.keys(zip.files).map((f) => Number(f.match(/^ppt\/slides\/slide(\d+)\.xml$/)?.[1] || 0))) + 1;
 
   for (const path of paths) {
     const xml = await zip.file(path).async('string');
     const doc = parse(xml);
     const paras = els(doc, A, 'p').filter((p) => paraText(p).includes('{'));
+    // 이 화면 뒤에 넣을 악보·교독문 (같은 자리 표시가 여러 화면에 있으면 처음 화면에만)
+    for (const p of paras)
+      for (const m of paraText(p).matchAll(PH)) {
+        const k = m[1].trim();
+        if (inserts[k]?.length && !done.has(k)) {
+          done.add(k);
+          pics.push([path, inserts[k]]);
+        }
+      }
     const newsPara = paras.find((p) => paraText(p).trim() === `{${NEWS_KEY}}`);
     for (const p of paras) {
       if (p === newsPara) continue;
@@ -174,6 +186,12 @@ export async function fillTemplate(buf, values) {
       }
     });
   }
+  for (const [path, images] of pics) {
+    for (const img of images) {
+      const np2 = `ppt/slides/slide${nextNo++}.xml`;
+      extra.push([path, np2, await picSlide(zip, path, np2, img)]);
+    }
+  }
   if (extra.length) await addSlides(zip, extra);
   return zip.generateAsync({ type: 'blob', compression: 'DEFLATE', mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
 }
@@ -192,11 +210,12 @@ async function addSlides(zip, extra) {
   const ridOf = (path) => relList.find((r) => 'ppt/' + r.getAttribute('Target').replace(/^\/?ppt\//, '') === path)?.getAttribute('Id');
   const after = {}; // 원래 슬라이드 → 마지막으로 넣은 sldId 요소
 
-  for (const [orig, copy] of extra) {
-    // 슬라이드 연결 정보 복사 (발표자 노트는 원래 슬라이드 것이라 뺌)
+  for (const [orig, copy, ownRels] of extra) {
+    // 슬라이드 연결 정보 복사 (발표자 노트는 원래 슬라이드 것이라 뺌). 그림 화면은 따로 만든 연결 정보
     const name = (p) => p.split('/').pop();
     const srcRels = zip.file(`ppt/slides/_rels/${name(orig)}.rels`);
-    if (srcRels) {
+    if (ownRels) zip.file(`ppt/slides/_rels/${name(copy)}.rels`, ownRels);
+    else if (srcRels) {
       const r = parse(await srcRels.async('string'));
       els(r, PKG, 'Relationship').filter((x) => /notesSlide$/.test(x.getAttribute('Type'))).forEach((x) => x.remove());
       zip.file(`ppt/slides/_rels/${name(copy)}.rels`, serialize(r));
@@ -223,4 +242,143 @@ async function addSlides(zip, extra) {
   zip.file(ctPath, serialize(ct));
   zip.file(relsPath, serialize(rels));
   zip.file('ppt/presentation.xml', serialize(pres));
+}
+
+// ── 그림 화면 (찬송 악보, 교독문) ──
+
+const IMAGE_TYPE = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/image';
+const LAYOUT_TYPE = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships/slideLayout';
+const relsOf = (path) => path.replace(/([^/]+)$/, '_rels/$1.rels');
+const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+
+async function imageSize(data) {
+  const bmp = await createImageBitmap(new Blob([data]));
+  const r = { w: bmp.width, h: bmp.height };
+  bmp.close?.();
+  return r;
+}
+
+/** 그림 한 장을 화면 가운데에 꽉 차게 넣은 슬라이드를 path 에 만들고, 그 연결 정보 XML 을 돌려줌 */
+async function picSlide(zip, after, path, img) {
+  const pres = await zip.file('ppt/presentation.xml').async('string');
+  const W = Number(pres.match(/<p:sldSz[^>]*\bcx="(\d+)"/)?.[1] || 9144000);
+  const H = Number(pres.match(/<p:sldSz[^>]*\bcy="(\d+)"/)?.[1] || 6858000);
+  const { w, h } = await imageSize(img.data);
+  // 비율이 거의 같으면 꽉 채우고, 아니면 비율을 지켜 가운데 맞춤
+  const fit = Math.abs(w / h - W / H) < 0.03;
+  const scale = Math.min(W / w, H / h);
+  const cx = fit ? W : Math.round(w * scale);
+  const cy = fit ? H : Math.round(h * scale);
+  const ext = img.ext === 'png' ? 'png' : 'jpeg';
+  const media = `ppt/media/insert${path.match(/(\d+)\.xml$/)[1]}.${ext}`;
+  zip.file(media, img.data);
+  await ensureDefault(zip, ext, ext === 'png' ? 'image/png' : 'image/jpeg');
+
+  // 앞 화면과 같은 레이아웃을 씀
+  const srcRels = zip.file(relsOf(after));
+  const layout = srcRels
+    ? els(parse(await srcRels.async('string')), PKG, 'Relationship')
+        .find((r) => r.getAttribute('Type') === LAYOUT_TYPE)
+        ?.getAttribute('Target')
+    : null;
+  zip.file(
+    path,
+    XML_HEAD +
+      `<p:sld xmlns:a="${A}" xmlns:r="${R}" xmlns:p="${P}"><p:cSld><p:bg><p:bgPr><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill><a:effectLst/></p:bgPr></p:bg><p:spTree>` +
+      `<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>` +
+      `<p:pic><p:nvPicPr><p:cNvPr id="2" name="${esc(img.name || '그림')}"/><p:cNvPicPr><a:picLocks noChangeAspect="1"/></p:cNvPicPr><p:nvPr/></p:nvPicPr>` +
+      `<p:blipFill><a:blip r:embed="rId2"/><a:stretch><a:fillRect/></a:stretch></p:blipFill>` +
+      `<p:spPr><a:xfrm><a:off x="${Math.round((W - cx) / 2)}" y="${Math.round((H - cy) / 2)}"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:prstGeom prst="rect"><a:avLst/></a:prstGeom></p:spPr></p:pic>` +
+      `</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>`,
+  );
+  return (
+    XML_HEAD +
+    `<Relationships xmlns="${PKG}">` +
+    (layout ? `<Relationship Id="rId1" Type="${LAYOUT_TYPE}" Target="${esc(layout)}"/>` : '') +
+    `<Relationship Id="rId2" Type="${IMAGE_TYPE}" Target="../media/${media.split('/').pop()}"/></Relationships>`
+  );
+}
+
+async function ensureDefault(zip, ext, type) {
+  const path = '[Content_Types].xml';
+  const ct = parse(await zip.file(path).async('string'));
+  const ns = ct.documentElement.namespaceURI;
+  if ([...ct.getElementsByTagNameNS(ns, 'Default')].some((d) => d.getAttribute('Extension').toLowerCase() === ext)) return;
+  const d = ct.createElementNS(ns, 'Default');
+  d.setAttribute('Extension', ext);
+  d.setAttribute('ContentType', type);
+  ct.documentElement.insertBefore(d, ct.documentElement.firstChild);
+  zip.file(path, serialize(ct));
+}
+
+/** 그림 → jpg/png (다른 형식은 png 로 바꿈, 브라우저가 못 읽는 그림은 null) */
+async function toWebImage(data, ext) {
+  ext = ext.toLowerCase().replace('jpeg', 'jpg');
+  if (ext === 'jpg' || ext === 'png') return { data, ext };
+  let bmp;
+  try {
+    bmp = await createImageBitmap(new Blob([data]));
+  } catch {
+    return null;
+  }
+  const c = document.createElement('canvas');
+  c.width = bmp.width;
+  c.height = bmp.height;
+  c.getContext('2d').drawImage(bmp, 0, 0);
+  const blob = await new Promise((r) => c.toBlob(r, 'image/png'));
+  return { data: new Uint8Array(await blob.arrayBuffer()), ext: 'png' };
+}
+
+/**
+ * 올린 파일들 → 화면 그림 목록.
+ * 그림 파일은 한 장이 한 화면, .pptx 는 화면마다 가장 큰 그림을 꺼냄 (그림으로 된 악보 PPT).
+ * 돌려줌: { images: [{data, ext}], skipped: 그림이 없어 뺀 화면 수 }
+ */
+export async function imagesFromFiles(files) {
+  const images = [];
+  let skipped = 0;
+  for (const f of files) {
+    const ext = (f.name.match(/\.([a-z0-9]+)$/i)?.[1] || '').toLowerCase();
+    if (ext === 'ppt') throw new Error('옛날 형식(.ppt)은 읽을 수 없습니다. 파워포인트에서 .pptx 로 저장하거나, 다른 이름으로 저장 → JPEG 로 그림을 만들어 올려 주세요.');
+    const data = new Uint8Array(await f.arrayBuffer());
+    if (ext !== 'pptx') {
+      const img = await toWebImage(data, ext);
+      if (!img) throw new Error(`${f.name}: 읽을 수 없는 그림입니다. jpg 나 png 로 올려 주세요.`);
+      images.push(img);
+      continue;
+    }
+    const zip = await loadZip(data);
+    for (const path of await slidePaths(zip)) {
+      const doc = parse(await zip.file(path).async('string'));
+      const rf = zip.file(relsOf(path));
+      const rels = rf ? Object.fromEntries(els(parse(await rf.async('string')), PKG, 'Relationship').map((r) => [r.getAttribute('Id'), r.getAttribute('Target')])) : {};
+      let best = null;
+      for (const b of els(doc, A, 'blip')) {
+        const t = rels[b.getAttributeNS(R, 'embed')];
+        const mf = t && zip.file('ppt/' + t.replace(/^(\.\.\/)+/, '').replace(/^\/?ppt\//, ''));
+        if (!mf) continue;
+        const d = await mf.async('uint8array');
+        if (!best || d.length > best.data.length) best = { data: d, ext: t.split('.').pop() };
+      }
+      const img = best && (await toWebImage(best.data, best.ext));
+      if (img) images.push(img);
+      else skipped++;
+    }
+  }
+  return { images, skipped };
+}
+
+/** 그림 목록 → 서버에 저장하는 zip (001.jpg, 002.png …) */
+export async function packImages(images) {
+  const { default: JSZip } = await import('jszip');
+  const z = new JSZip();
+  images.forEach((img, i) => z.file(`${String(i + 1).padStart(3, '0')}.${img.ext}`, img.data));
+  return z.generateAsync({ type: 'blob', compression: 'STORE' });
+}
+
+/** 서버에 저장한 zip → 그림 목록 */
+export async function unpackImages(buf) {
+  const zip = await loadZip(buf);
+  const names = Object.keys(zip.files).filter((n) => /^\d{3}\.(jpg|jpeg|png)$/.test(n)).sort();
+  return Promise.all(names.map(async (n) => ({ data: await zip.file(n).async('uint8array'), ext: n.endsWith('png') ? 'png' : 'jpg' })));
 }
