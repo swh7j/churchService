@@ -16,10 +16,10 @@ final class Resources {
 					.order("name, id").build()),
 
 			Map.entry("offering_types", Resource.of("offering_types", "finance").adminWrite()
-					.cols("name", "sort").order("sort, id").build()),
+					.cols("name", "grp", "sort").order("sort, id").build()),
 
 			Map.entry("categories", Resource.of("categories", "finance").adminWrite()
-					.cols("kind", "name", "sort").filters("kind").order("kind, sort, id").build()),
+					.cols("kind", "name", "grp", "sort").filters("kind").order("kind, sort, id").build()),
 
 			Map.entry("services", Resource.of("services", "church").adminWrite()
 					.cols("name", "sort").order("sort, id").build()),

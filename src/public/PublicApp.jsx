@@ -4,7 +4,7 @@ import { BrowserRouter, Link, NavLink, Route, Routes, useParams } from 'react-ro
 import { api } from '../api';
 import { BASE, churchPath } from '../church';
 import { BulletinView } from '../pages/Bulletins';
-import BulletinSheets from '../pages/bulletin/BulletinSheets';
+import BulletinSheets, { FlipBackOption } from '../pages/bulletin/BulletinSheets';
 import { parseLayout, parseTemplate } from '../pages/bulletin/layout';
 import { dday, kdate } from '../utils';
 import PrayerBoard from './PrayerBoard';
@@ -228,8 +228,14 @@ function BulletinDetail({ church }) {
     <>
       <div className="pub-toolbar no-print">
         <Link to="/bulletins">← 주보 목록</Link>
-        {data && <button className="pub-btn small" onClick={() => window.print()}>인쇄</button>}
+        {data && (
+          <span className="pub-toolbar-actions">
+            {data.layout && <FlipBackOption className="pub-flip" />}
+            <button className="pub-btn small" onClick={() => window.print()}>인쇄</button>
+          </span>
+        )}
       </div>
+      {data?.layout && <p className="pub-print-tip no-print">인쇄 창에서 용지 A4·가로, '배경 그래픽'을 켜 주세요. 'PDF로 저장'도 됩니다.</p>}
       {data ? <PublicBulletin b={data} church={church} /> : <Status error={error} />}
     </>
   );

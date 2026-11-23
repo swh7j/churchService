@@ -62,6 +62,14 @@ public final class DatabaseInitializer {
 			log.info("prayers 테이블에 is_secret(비밀 기도제목) 컬럼을 추가했습니다.");
 		}
 
+		// 결산보고서 소계 묶음 (예: 목회비, 관리비) — 헌금 종류·계정과목 공통
+		for (String table : List.of("offering_types", "categories")) {
+			if (!jdbc.queryForList("SELECT name FROM pragma_table_info(?)", String.class, table).contains("grp")) {
+				jdbc.execute("ALTER TABLE " + table + " ADD COLUMN grp TEXT");
+				log.info("{} 테이블에 grp(소계 묶음) 컬럼을 추가했습니다.", table);
+			}
+		}
+
 		// 교인 생일 칸 (월·일·음력 여부·성도 화면 공개 여부)
 		List<String> mcols = jdbc.queryForList("SELECT name FROM pragma_table_info('members')", String.class);
 		Map<String, String> add = new LinkedHashMap<>();
@@ -102,7 +110,7 @@ public final class DatabaseInitializer {
 		List<String> types = List.of("십일조", "주일헌금", "감사헌금", "건축헌금", "선교헌금", "절기헌금");
 		for (int i = 0; i < types.size(); i++) jdbc.update("INSERT INTO offering_types (name, sort) VALUES (?, ?)", types.get(i), i + 1);
 		List<String> income = List.of("전기이월금", "이자수입", "기타수입");
-		for (int i = 0; i < income.size(); i++) jdbc.update("INSERT INTO categories (kind, name, sort) VALUES ('income', ?, ?)", income.get(i), i + 1);
+		for (int i = 0; i < income.size(); i++) jdbc.update("INSERT INTO categories (kind, name, sort) VALUES ('income', ?, ?)", income.get(i), i + 101); // 헌금 종류 뒤에 나오도록
 		List<String> expense = List.of("사례비", "관리비", "교육비", "선교비", "구제비", "행사비", "비품비", "기타지출");
 		for (int i = 0; i < expense.size(); i++) jdbc.update("INSERT INTO categories (kind, name, sort) VALUES ('expense', ?, ?)", expense.get(i), i + 1);
 		List<String> services = List.of("주일 1부 예배", "주일 2부 예배", "수요 예배", "금요 기도회");

@@ -95,6 +95,15 @@ CREATE TABLE IF NOT EXISTS transactions (
 );
 CREATE INDEX IF NOT EXISTS idx_transactions_date ON transactions(date);
 
+-- 연간 예산 (item: 'o:헌금종류id' 또는 'c:계정과목id'), memo = 예결산서 비고
+CREATE TABLE IF NOT EXISTS budgets (
+  year INTEGER NOT NULL,
+  item TEXT NOT NULL,
+  amount INTEGER NOT NULL DEFAULT 0,
+  memo TEXT,
+  PRIMARY KEY (year, item)
+);
+
 -- 소모임 회계 (교회 장부와 별도)
 CREATE TABLE IF NOT EXISTS small_groups (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

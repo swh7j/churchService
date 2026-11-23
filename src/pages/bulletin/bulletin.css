@@ -18,6 +18,7 @@
 .be-sub .form-grid { margin-bottom: 10px; }
 .form-grid.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .be-print-tip { margin-right: auto; align-self: center; }
+.be-flip { display: inline-flex; align-items: center; gap: 4px; font-size: 13px; cursor: pointer; white-space: nowrap; }
 .modal.wide:has(.bp-preview) { max-width: 1240px; }
 @media (max-width: 860px) {
   .form-grid.three { grid-template-columns: 1fr; }
@@ -111,6 +112,8 @@
   .bp-fit:last-child { break-after: auto; }
   .bp-fit > .bp-sheet { transform: none; }
   .bp-sheet { margin: 0; box-shadow: none; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+  /* 안쪽면 뒤집어 인쇄: 두 번째 장만 180도 회전 */
+  body.bp-flip-back .bp-fit:nth-child(2) > .bp-sheet { transform: rotate(180deg); transform-origin: center; }
   body.printing-bulletin .pub-main { padding: 0; max-width: none; }
 }
 

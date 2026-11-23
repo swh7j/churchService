@@ -3,7 +3,7 @@ import { api, saveRow } from '../api';
 import { Badge, Card, confirmDelete, Form, Modal, PageHeader, useList } from '../components';
 import { downloadCSV, today } from '../utils';
 
-export const POSITIONS = ['목사', '전도사', '장로', '권사', '안수집사', '집사', '성도', '청년', '학생', '아동'];
+export const POSITIONS = ['목사', '강도사', '전도사', '사모', '장로', '권사', '안수집사', '집사', '성도', '청년', '학생', '아동', '익명'];
 export const STATUSES = ['재적', '새가족', '장기결석', '전출', '별세'];
 const STATUS_TONE = { 재적: 'green', 새가족: 'blue', 장기결석: 'amber', 전출: 'gray', 별세: 'gray' };
 const birthText = (m) => (m.birth_month && m.birth_day ? `${m.birth_month}월 ${m.birth_day}일` : '');

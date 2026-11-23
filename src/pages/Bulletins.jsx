@@ -2,7 +2,7 @@ import { useContext, useEffect, useState } from 'react';
 import { api, saveRow } from '../api';
 import { AppCtx, Badge, Card, confirmDelete, Modal, PageHeader, useList } from '../components';
 import { addDays, kdate, nextSunday } from '../utils';
-import BulletinSheets from './bulletin/BulletinSheets';
+import BulletinSheets, { FlipBackOption } from './bulletin/BulletinSheets';
 import { BulletinEditor, TemplateEditor } from './bulletin/Editors';
 import { parseLayout, parseTemplate } from './bulletin/layout';
 import WorshipPpt from './bulletin/WorshipPpt';
@@ -98,6 +98,7 @@ export default function Bulletins() {
         <Modal title="주보 미리보기" onClose={() => setViewing(null)} wide>
           <div className="form-actions no-print top">
             <span className="muted small be-print-tip">인쇄 창에서 용지 A4·가로, '배경 그래픽' 켜기 → PDF로 저장도 가능</span>
+            {viewing.layout && <FlipBackOption />}
             <button className="btn" onClick={() => { edit(viewing); setViewing(null); }}>수정</button>
             <button className="btn primary" onClick={() => window.print()}>인쇄</button>
           </div>

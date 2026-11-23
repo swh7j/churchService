@@ -19,6 +19,34 @@ function usePrintPage() {
   }, []);
 }
 
+const FLIP_KEY = 'bulletin.flipBack';
+const readFlip = () => {
+  try {
+    return localStorage.getItem(FLIP_KEY) === '1';
+  } catch {
+    return false;
+  }
+};
+
+/** 양면 인쇄 때 안쪽면이 거꾸로 나오는 프린터용: 인쇄할 때만 두 번째 장을 180도 돌려서 출력 (PC마다 기억) */
+export function FlipBackOption({ className = 'be-flip' }) {
+  const [on, setOn] = useState(readFlip);
+  useEffect(() => {
+    document.body.classList.toggle('bp-flip-back', on);
+    try {
+      localStorage.setItem(FLIP_KEY, on ? '1' : '0');
+    } catch {
+      /* 저장 못 해도 이번 인쇄에는 적용됨 */
+    }
+    return () => document.body.classList.remove('bp-flip-back');
+  }, [on]);
+  return (
+    <label className={className} title="양면 인쇄했을 때 안쪽면(예배 순서 쪽)이 거꾸로 나오면 켜 주세요">
+      <input type="checkbox" checked={on} onChange={(e) => setOn(e.target.checked)} /> 안쪽면 뒤집어 인쇄
+    </label>
+  );
+}
+
 /** 세로쓰기 칸: 글자는 세우고, 숫자(예: 10월의 10)는 한 칸에 가로로 모아 세움 */
 function VerticalText({ text }) {
   return (text || '').split(/(\d+)/).map((part, i) => (/^\d+$/.test(part) ? <span key={i} className="tcy">{part}</span> : part));
