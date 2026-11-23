@@ -57,6 +57,12 @@
 			<artifactId>poi-scratchpad</artifactId>
 			<version>5.4.1</version>
 		</dependency>
+		<!-- 테스트 (JUnit 5, AssertJ, Spring 테스트) -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
 	<build>

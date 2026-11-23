@@ -19,6 +19,18 @@ npm run dev      # Spring(8080) + React(5173) 같이 실행 → http://localhost
 - `JAVA_HOME`이 Java 8을 가리켜도, PATH에 있는 Java 17을 자동으로 찾아 씁니다 (`scripts/run-api.mjs`).
 - IntelliJ에서 `api/` 폴더를 Maven 프로젝트로 열어 `ChurchApiApplication`을 직접 실행해도 됩니다. (JDK 17 선택)
 
+## 테스트
+
+```bash
+cd api
+./mvnw test      # Windows: mvnw.cmd test  (JAVA_HOME 이 Java 17 이어야 함)
+```
+
+- **단위 테스트**: 음력 → 양력 변환, 로그인 잠금 규칙, 비밀번호 해시(scrypt), 옛날 `.ppt` 찬송가 → 그림 변환(배경 합성)
+- **통합 테스트**: 빈 임시 폴더에 실제 서버를 띄워 HTTP 로 요청 — 로그인·역할별 권한, 보안 헤더(CSP)·요청 크기 제한,
+  결산(월별 합계·소계 묶음·정렬·예산), 교회 앨범(공개/비공개·zip·사진 백업)
+- GitHub 에 올리면 **GitHub Actions** 가 서버 테스트와 화면 빌드를 자동으로 돌립니다 (`.github/workflows/ci.yml`).
+
 ## 인터넷에 올리기 (무료 클라우드 서버)
 
 - 👉 구글 클라우드: [deploy/README-google.md](deploy/README-google.md)
