@@ -109,18 +109,18 @@ public class PlatformController {
 	@PostMapping("/api/platform/login")
 	public Map<String, Object> login(@RequestBody Map<String, Object> body, HttpServletRequest req, HttpServletResponse res) {
 		String username = Api.str(body.get("username")).trim();
-		String key = "platform:" + username.toLowerCase();
-		int locked = guard.lockedMinutes(key);
+		String[] keys = LoginGuard.keys("platform", username, req.getRemoteAddr());
+		int locked = guard.lockedMinutes(keys);
 		if (locked > 0) throw new ApiException(429, "로그인 실패가 반복되어 잠겼습니다. " + locked + "분 후 다시 시도해 주세요.");
 		List<Map<String, Object>> rows = auth.jdbc().queryForList("SELECT * FROM platform_users WHERE username = ?", username);
 		Map<String, Object> u = rows.isEmpty() ? null : rows.get(0);
 		boolean ok = PasswordHasher.verify(Api.str(body.get("password")), u == null ? PasswordHasher.DUMMY : (String) u.get("password_hash"))
 				&& u != null && Api.num(u.get("active")) == 1;
 		if (!ok) {
-			guard.fail(key);
+			guard.failLogin(keys);
 			throw ApiException.bad("아이디 또는 비밀번호가 맞지 않습니다.");
 		}
-		guard.success(key);
+		guard.success(keys[0], keys[2]);
 		auth.start(req, res, Api.num(u.get("id")));
 		log(new PlatformUser(Api.num(u.get("id")), username, ""), "로그인", null);
 		return Map.of("ok", true);

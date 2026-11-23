@@ -88,11 +88,13 @@ public class AuthController {
 		if (userCount() > 0) throw ApiException.bad("이미 관리자 계정이 있습니다. 로그인해 주세요.");
 		String code = setupCode();
 		if (!code.isEmpty()) {
-			int locked = guard.lockedMinutes(guardKey("__setup__"));
+			String ipKey = "ip:" + req.getRemoteAddr();
+			int locked = guard.lockedMinutes(guardKey("__setup__"), ipKey);
 			if (locked > 0) throw new ApiException(429, "설치 코드 입력 실패가 반복되어 잠겼습니다. " + locked + "분 후 다시 시도해 주세요.");
 			byte[] given = Api.str(body.get("setupToken")).trim().getBytes(StandardCharsets.UTF_8);
 			if (!MessageDigest.isEqual(given, code.getBytes(StandardCharsets.UTF_8))) {
 				guard.fail(guardKey("__setup__"));
+				guard.fail(ipKey, LoginGuard.IP);
 				throw ApiException.bad("설치 코드가 맞지 않습니다. 교회를 등록할 때 받은 8자리 코드를 입력해 주세요.");
 			}
 		}
@@ -114,8 +116,8 @@ public class AuthController {
 	public Map<String, Object> login(@RequestBody Map<String, Object> body, HttpServletRequest req, HttpServletResponse res) {
 		String username = Api.str(body.get("username")).trim();
 		String password = Api.str(body.get("password"));
-		String key = guardKey(username.toLowerCase());
-		int locked = guard.lockedMinutes(key);
+		String[] keys = LoginGuard.keys(ChurchContext.get(), username, req.getRemoteAddr());
+		int locked = guard.lockedMinutes(keys);
 		if (locked > 0) throw new ApiException(429, "로그인 실패가 반복되어 잠겼습니다. " + locked + "분 후 다시 시도해 주세요.");
 
 		List<Map<String, Object>> rows = jdbc.queryForList("SELECT * FROM users WHERE username = ?", username);
@@ -124,10 +126,10 @@ public class AuthController {
 		boolean ok = PasswordHasher.verify(password, u == null ? PasswordHasher.DUMMY : (String) u.get("password_hash"))
 				&& u != null && Api.num(u.get("active")) == 1;
 		if (!ok) {
-			guard.fail(key);
+			guard.failLogin(keys);
 			throw ApiException.bad("아이디 또는 비밀번호가 맞지 않습니다.");
 		}
-		guard.success(key);
+		guard.success(keys[0], keys[2]);
 		long id = Api.num(u.get("id"));
 		sessions.start(req, res, id);
 		audit.log(new AuthUser(id, username, (String) u.get("name"), (String) u.get("role")), "로그인", "auth", null, null);

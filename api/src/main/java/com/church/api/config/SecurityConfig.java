@@ -25,12 +25,22 @@ import jakarta.servlet.http.HttpServletResponse;
 @EnableMethodSecurity // @PreAuthorize 사용
 public class SecurityConfig {
 
+	/**
+	 * 보안 헤더(CSP). 스크립트·연결은 이 서버만, 그림은 사진 미리보기용 data:/blob: 도 허용,
+	 * 스타일은 화면에서 쓰는 style 속성·인쇄 설정 때문에 inline 허용, 다른 사이트 안에 넣는 것(frame) 금지
+	 */
+	static final String CSP = "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
+			+ "font-src 'self' data:; connect-src 'self'; media-src 'self' blob:; object-src 'none'; base-uri 'self'; "
+			+ "form-action 'self'; frame-ancestors 'none'";
+
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http, SessionService sessions) throws Exception {
 		http
 				// 쿠키가 SameSite=Lax 이고 API가 JSON만 받으므로 CSRF 토큰은 사용하지 않음
 				.csrf(c -> c.disable())
 				.sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+				// 화면 공격(XSS)이 생겨도 다른 곳의 스크립트를 불러오거나 정보를 빼돌리지 못하게: 우리 서버 것만 허용
+				.headers(h -> h.contentSecurityPolicy(c -> c.policyDirectives(CSP)))
 				.httpBasic(b -> b.disable())
 				.formLogin(f -> f.disable())
 				.logout(l -> l.disable())

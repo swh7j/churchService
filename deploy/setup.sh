@@ -112,6 +112,10 @@ say "5/7" "HTTPS 웹서버 설정 ($DOMAIN)"
 cat > /etc/caddy/Caddyfile <<EOF
 $DOMAIN {
 	encode gzip
+	# 너무 큰 요청은 프로그램에 닿기 전에 막음 (가장 큰 업로드: 예배 PPT 서식 40MB)
+	request_body {
+		max_size 50MB
+	}
 	header {
 		# 브라우저가 이 주소는 항상 HTTPS 로만 접속하도록 (1년)
 		Strict-Transport-Security "max-age=31536000"
