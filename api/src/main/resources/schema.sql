@@ -209,3 +209,26 @@ CREATE TABLE IF NOT EXISTS ppt_inserts (
   updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
   PRIMARY KEY (kind, no)
 );
+
+-- 교회 앨범. 사진 파일은 DB 밖 data/photos/{교회코드}/{file}.jpg (작은 사진 {file}_t.jpg) — 매일 DB 백업이 커지지 않게
+CREATE TABLE IF NOT EXISTS albums (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  date TEXT NOT NULL,
+  title TEXT NOT NULL,
+  description TEXT,
+  is_public INTEGER NOT NULL DEFAULT 1,  -- 성도 화면 공개 여부
+  cover_id INTEGER,                      -- 대표 사진 (없으면 첫 사진)
+  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime')),
+  updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+CREATE TABLE IF NOT EXISTS album_photos (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  album_id INTEGER NOT NULL REFERENCES albums(id) ON DELETE CASCADE,
+  sort INTEGER NOT NULL DEFAULT 0,
+  width INTEGER,
+  height INTEGER,
+  size INTEGER NOT NULL DEFAULT 0,       -- 사진 + 작은 사진 바이트
+  file TEXT NOT NULL,                     -- 파일 이름 (무작위)
+  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+CREATE INDEX IF NOT EXISTS idx_album_photos_album ON album_photos(album_id, sort, id);

@@ -135,7 +135,21 @@ public class WorshipPptController {
 	/** 화면 저장: 그림(jpg/png)들을 담은 zip 을 body 로 받음 */
 	@PutMapping(value = "/inserts/{kind}/{no}", consumes = MediaType.APPLICATION_OCTET_STREAM_VALUE)
 	public Map<String, Object> saveInsert(@PathVariable String kind, @PathVariable String no, @RequestBody byte[] file) {
+		return store(kind(kind), no(no), file);
+	}
+
+	/** 옛날 파워포인트(.ppt) 그대로 올리기: 서버에서 슬라이드마다 그림을 꺼내 저장 (찬송가 보관함) */
+	@PutMapping(value = "/inserts/{kind}/{no}/ppt", consumes = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+	public Map<String, Object> saveInsertPpt(@PathVariable String kind, @PathVariable String no, @RequestBody byte[] ppt) {
 		String k = kind(kind), n = no(no);
+		if (ppt.length > MAX_INSERT) throw ApiException.bad("PPT 파일이 너무 큽니다.");
+		PptImages.Result r = PptImages.toZip(ppt);
+		Map<String, Object> saved = new java.util.LinkedHashMap<>(store(k, n, r.zip()));
+		saved.put("skipped", r.skipped());
+		return saved;
+	}
+
+	private Map<String, Object> store(String k, String n, byte[] file) {
 		if (file.length > MAX_INSERT) throw ApiException.bad("그림이 너무 큽니다. 화면 수를 줄이거나 작은 그림으로 올려 주세요.");
 		int count = countImages(file);
 		if (count == 0) throw ApiException.bad("그림이 없습니다.");

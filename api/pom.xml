@@ -51,6 +51,12 @@
 			<artifactId>bcprov-jdk18on</artifactId>
 			<version>1.80</version>
 		</dependency>
+		<!-- 옛날 파워포인트(.ppt) 찬송가 파일에서 슬라이드 그림 꺼내기 -->
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi-scratchpad</artifactId>
+			<version>5.4.1</version>
+		</dependency>
 	</dependencies>
 
 	<build>

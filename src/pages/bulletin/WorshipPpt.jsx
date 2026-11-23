@@ -189,16 +189,31 @@ export default function WorshipPpt({ b }) {
     setInsMsg('');
     setBusy(`${t.label} 올리는 중…`);
     try {
-      const { images, skipped } = await imagesFromFiles(files);
-      if (!images.length) throw new Error('그림을 찾지 못했습니다. 글자로 된 PPT는 파워포인트에서 다른 이름으로 저장 → JPEG 로 그림을 만들어 올려 주세요.');
-      const res = await fetch(withChurch(`/api/worship-ppt/inserts/${t.kind}/${t.no}`), {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/octet-stream' },
-        body: await packImages(images),
-      });
-      if (!res.ok) throw new Error((await res.json().catch(() => null))?.error || '저장하지 못했습니다.');
+      let count, skipped;
+      if (files.length === 1 && /\.ppt$/i.test(files[0].name)) {
+        // 옛날 .ppt 는 서버에서 그림을 꺼냄
+        const res = await fetch(withChurch(`/api/worship-ppt/inserts/${t.kind}/${t.no}/ppt`), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/octet-stream' },
+          body: files[0],
+        });
+        const r = await res.json().catch(() => null);
+        if (!res.ok) throw new Error(r?.error || '저장하지 못했습니다.');
+        ({ count, skipped } = r);
+      } else {
+        const got = await imagesFromFiles(files);
+        if (!got.images.length) throw new Error('그림을 찾지 못했습니다. 글자로 된 PPT는 파워포인트에서 다른 이름으로 저장 → JPEG 로 그림을 만들어 올려 주세요.');
+        const res = await fetch(withChurch(`/api/worship-ppt/inserts/${t.kind}/${t.no}`), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/octet-stream' },
+          body: await packImages(got.images),
+        });
+        if (!res.ok) throw new Error((await res.json().catch(() => null))?.error || '저장하지 못했습니다.');
+        count = got.images.length;
+        skipped = got.skipped;
+      }
       await loadLib();
-      setInsMsg(`${t.label}: ${images.length}화면을 저장했습니다.` + (skipped ? ` (그림이 없는 화면 ${skipped}개는 뺐습니다)` : ''));
+      setInsMsg(`${t.label}: ${count}화면을 저장했습니다.` + (skipped ? ` (그림이 없는 화면 ${skipped}개는 뺐습니다)` : ''));
     } catch (x) {
       setInsMsg(`${t.label}: ${x.message}`);
     } finally {
@@ -253,7 +268,7 @@ export default function WorshipPpt({ b }) {
           {targets.length > 0 && (
             <div className="wppt-ins">
               <strong>찬송 악보 · 교독문 화면</strong>
-              <p className="muted small">한 번 올려 두면 다음부터는 번호만 맞으면 해당 화면 바로 뒤에 자동으로 들어갑니다. 그림(jpg, png) 여러 장이나 그림으로 된 PPT(.pptx)를 올려 주세요.</p>
+              <p className="muted small">한 번 올려 두면 다음부터는 번호만 맞으면 해당 화면 바로 뒤에 자동으로 들어갑니다. 그림(jpg, png) 여러 장이나 그림으로 된 PPT(.ppt, .pptx)를 올려 주세요. 여러 곡을 한꺼번에 올리려면 <strong>찬송가 보관함</strong> 메뉴를 쓰세요.</p>
               <ul>
                 {targets.map(({ key, t }) => {
                   const have = lib[libKey(t)];
@@ -266,7 +281,7 @@ export default function WorshipPpt({ b }) {
                       <span className={have ? 'small' : 'muted small'}>{have ? `${have.count}화면` : '아직 없음'}</span>
                       <span className="row-actions">
                         <label className="btn sm">
-                          <input type="file" accept=".pptx,image/*" multiple hidden disabled={!!busy} onChange={(e) => saveInsert(t, e)} />
+                          <input type="file" accept=".ppt,.pptx,image/*" multiple hidden disabled={!!busy} onChange={(e) => saveInsert(t, e)} />
                           {have ? '바꾸기' : '올리기'}
                         </label>
                         {have && <button className="btn sm" disabled={!!busy} onClick={() => removeInsert(t)}>지우기</button>}

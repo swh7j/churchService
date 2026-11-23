@@ -13,8 +13,10 @@ import Reports from './pages/Reports';
 import Groups from './pages/Groups';
 import Prayers from './pages/Prayers';
 import News from './pages/News';
+import Albums from './pages/Albums';
 import Bulletins from './pages/Bulletins';
 import Sheets from './pages/Sheets';
+import Hymns from './pages/Hymns';
 import Events from './pages/Events';
 import Settings from './pages/Settings';
 import Users from './pages/Users';
@@ -36,7 +38,7 @@ const NAV = [
   },
   {
     section: '소통',
-    items: [['/news', '교회 소식', News, 'church'], ['/bulletins', '주보 관리', Bulletins, 'church'], ['/sheets', '악보', Sheets, 'church'], ['/events', '행사 일정', Events, 'church'], ['/prayers', '기도제목 게시판', Prayers, 'church']],
+    items: [['/news', '교회 소식', News, 'church'], ['/albums', '교회 앨범', Albums, 'church'], ['/bulletins', '주보 관리', Bulletins, 'church'], ['/hymns', '찬송가 보관함', Hymns, 'church'], ['/sheets', '악보', Sheets, 'church'], ['/events', '행사 일정', Events, 'church'], ['/prayers', '기도제목 게시판', Prayers, 'church']],
   },
   {
     section: '관리',

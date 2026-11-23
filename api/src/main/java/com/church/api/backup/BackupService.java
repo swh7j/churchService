@@ -25,6 +25,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.sqlite.SQLiteConfig;
 
+import com.church.api.church.PhotoStore;
 import com.church.api.common.Api;
 import com.church.api.common.ApiException;
 import com.church.api.tenant.ChurchContext;
@@ -37,6 +38,7 @@ import com.church.api.tenant.ChurchRegistry.Church;
  * - 복원: sqlite-jdbc 의 "restore from" (SQLite 온라인 백업 API) 로 현재 DB 내용을 교체
  * - 자동 백업: 서버가 켜져 있으면 하루 한 번, 최근 30개 보관
  * - 교회마다 백업 폴더가 따로 있음 (backups/{교회 코드}, 처음부터 쓰던 교회는 backups 바로 아래)
+ * - 앨범 사진은 DB 밖 파일이라, 백업할 때 새로 올라온 사진만 backups/_photos/{교회 코드} 로 복사 (PhotoStore)
  */
 @Service
 public class BackupService {
@@ -49,10 +51,12 @@ public class BackupService {
 	private final JdbcTemplate jdbc;
 	private final Path root;
 	private final ChurchRegistry churches;
+	private final PhotoStore photos;
 
-	public BackupService(JdbcTemplate jdbc, ChurchRegistry churches, @Value("${app.backup-dir}") String backupDir) {
+	public BackupService(JdbcTemplate jdbc, ChurchRegistry churches, PhotoStore photos, @Value("${app.backup-dir}") String backupDir) {
 		this.jdbc = jdbc;
 		this.churches = churches;
+		this.photos = photos;
 		this.root = Path.of(backupDir).toAbsolutePath().normalize();
 	}
 
@@ -94,6 +98,8 @@ public class BackupService {
 		Path file = dir.resolve(name);
 		if (Files.exists(file)) throw ApiException.bad("방금 백업했습니다. 잠시 후 다시 시도해 주세요.");
 		jdbc.execute("VACUUM INTO '" + file.toString().replace("'", "''") + "'");
+		int copied = photos.backup();
+		if (copied > 0) log.info("앨범 사진 백업: 새 사진 {}장 복사 ({})", copied, ChurchContext.get());
 		if ("auto".equals(kind)) {
 			list().stream().filter(b -> "auto".equals(b.get("kind"))).skip(KEEP_AUTO)
 					.forEach(b -> dir.resolve((String) b.get("name")).toFile().delete());

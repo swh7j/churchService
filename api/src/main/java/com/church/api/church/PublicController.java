@@ -56,7 +56,9 @@ public class PublicController {
 				"news", jdbc.queryForList("SELECT " + NEWS_COLS + " FROM news WHERE is_public = 1 ORDER BY pinned DESC, date DESC, id DESC LIMIT 5"),
 				"events", jdbc.queryForList("SELECT " + EVENT_COLS + " FROM events WHERE is_public = 1 AND COALESCE(end_date, start_date) >= ? ORDER BY start_date LIMIT 5", Api.today()),
 				// 생일 공개에 동의한 교인만, 이름·직분·이번 달 날짜(월·일)만
-				"birthdays", birthdays.inMonth(YearMonth.now(), true));
+				"birthdays", birthdays.inMonth(YearMonth.now(), true),
+				// 최근 교회 앨범 (공개 + 사진 있는 것)
+				"albums", jdbc.queryForList(AlbumController.PUBLIC_LIST + " LIMIT 4"));
 	}
 
 	/**

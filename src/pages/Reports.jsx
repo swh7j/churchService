@@ -8,8 +8,23 @@ const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1);
 const sumArr = (arr) => arr.reduce((a, b) => a + b, 0);
 const pct = (a, b) => (b ? `${Math.round((a / b) * 100)}%` : '');
 
+/** 결산보고서 화면이 열려 있는 동안 인쇄 용지 설정: A4 · 좁은 여백 · 촘촘한 표 (월별 추이표·교인별 헌금은 가로) */
+function usePrintReport(landscape) {
+  useEffect(() => {
+    const el = document.createElement('style');
+    el.textContent = `@page { size: A4 ${landscape ? 'landscape' : 'portrait'}; margin: 8mm; }`;
+    document.head.appendChild(el);
+    document.body.classList.add('printing-report');
+    return () => {
+      el.remove();
+      document.body.classList.remove('printing-report');
+    };
+  }, [landscape]);
+}
+
 export default function Reports() {
   const [tab, setTab] = useState('month');
+  usePrintReport(tab === 'trend' || tab === 'donations');
   const now = today();
   const thisYear = Number(now.slice(0, 4));
   const [year, setYear] = useState(thisYear);
@@ -141,23 +156,31 @@ function MonthReport({ year, month }) {
         <Stat label={`${month}월 지출`} value={`${num(exp.cur)}원`} />
         <Stat label={`${month}월 차액`} value={`${num(net.cur)}원`} tone={net.cur < 0 ? 'neg' : ''} />
       </div>
-      <div className="table-wrap">
-        <table className="report">
-          <thead>
-            <tr>
-              <th>항목</th>
-              <th className="num">{month}월</th>
-              <th className="num">누계 (1~{month}월)</th>
-              <th className="num">{year} 예산</th>
-              <th className="num">집행률</th>
-            </tr>
-          </thead>
-          <tbody>
-            {section('수입', d.income, inc, '수입 합계')}
-            {section('지출', d.expense, exp, '지출 합계')}
-            {line('net', '수지 차액', net, 'grand')}
-          </tbody>
-        </table>
+      {/* 수입 | 지출 나란히 (넓은 화면·인쇄), 좁은 화면에서는 위아래 */}
+      <div className="annual-grid">
+        {[
+          ['수입', d.income, inc, '수입 합계'],
+          ['지출', d.expense, exp, '지출 합계'],
+        ].map(([title, rows, total, totalName]) => (
+          <div className="table-wrap" key={title}>
+            <table className="report">
+              <thead>
+                <tr>
+                  <th>항목</th>
+                  <th className="num">{month}월</th>
+                  <th className="num">누계 (1~{month}월)</th>
+                  <th className="num">{year} 예산</th>
+                  <th className="num">집행률</th>
+                </tr>
+              </thead>
+              <tbody>{section(title, rows, total, totalName)}</tbody>
+            </table>
+          </div>
+        ))}
+      </div>
+      <div className="annual-foot">
+        <span>{month}월 수입 {num(inc.cur)}원 − 지출 {num(exp.cur)}원 · 누계 차액 {num(net.acc)}원</span>
+        <strong className={net.cur < 0 ? 'neg' : ''}>{month}월 수지 차액 {num(net.cur)}원</strong>
       </div>
       <p className="muted small">집행률 = 누계 ÷ 올해 예산. 예산은 '연간 결산' 탭에서 입력합니다.</p>
     </Card>

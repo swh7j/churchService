@@ -65,6 +65,12 @@ const STYLES_XML = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
  * @returns {Promise<Blob>}
  */
 export async function makeXlsx({ sheetName, widths, rows, merges = [], heights = {}, landscape = false }) {
+  // '한 장에 맞추기'를 모르는 프로그램(한셀 등)을 위해 배율도 계산해 넣음 (엑셀은 '한 장에 맞추기'를 우선)
+  const pageW = (landscape ? 842 : 595) - 0.8 * 72; // pt, 좌우 여백 0.4in
+  const pageH = (landscape ? 595 : 842) - 1.0 * 72 - 0.6 * 72; // 위아래 여백 + 머리글·바닥글
+  const tableW = widths.reduce((a, w) => a + (w * 7 + 5) * 0.75, 0); // 글자 수 → pt (대략)
+  const tableH = rows.reduce((a, _, r) => a + (heights[r] || 16.5), 0);
+  const scale = Math.max(10, Math.min(100, Math.floor(Math.min(pageW / tableW, pageH / tableH) * 100)));
   const { default: JSZip } = await import('jszip');
   const zip = new JSZip();
 
@@ -99,7 +105,7 @@ export async function makeXlsx({ sheetName, widths, rows, merges = [], heights =
 ${mergeXml}
 <printOptions horizontalCentered="1"/>
 <pageMargins left="0.4" right="0.4" top="0.5" bottom="0.5" header="0.3" footer="0.3"/>
-<pageSetup paperSize="9" orientation="${landscape ? 'landscape' : 'portrait'}" fitToWidth="1" fitToHeight="1"/>
+<pageSetup paperSize="9" orientation="${landscape ? 'landscape' : 'portrait'}" scale="${scale}" fitToWidth="1" fitToHeight="1"/>
 </worksheet>`,
   );
   zip.file('xl/styles.xml', STYLES_XML);

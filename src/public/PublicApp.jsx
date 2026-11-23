@@ -9,6 +9,7 @@ import { parseLayout, parseTemplate } from '../pages/bulletin/layout';
 import { dday, kdate } from '../utils';
 import PrayerBoard from './PrayerBoard';
 import { SheetDetail, SheetList } from './Sheets';
+import { AlbumCards, AlbumDetail, AlbumList } from './Albums';
 
 const NEWS_CATS = ['공지', '소식', '행사', '기도제목'];
 
@@ -63,6 +64,8 @@ export default function PublicApp() {
             <Route path="/news" element={<NewsPage />} />
             <Route path="/bulletins" element={<BulletinList />} />
             <Route path="/bulletins/:id" element={<BulletinDetail church={church} />} />
+            <Route path="/albums" element={<AlbumList />} />
+            <Route path="/albums/:id" element={<AlbumDetail />} />
             <Route path="/sheets" element={<SheetList />} />
             <Route path="/sheets/:id" element={<SheetDetail />} />
             <Route path="/events" element={<EventsPage />} />
@@ -129,6 +132,16 @@ function Home() {
         </section>
       )}
 
+      {data.albums?.length > 0 && (
+        <section className="pub-card">
+          <div className="pub-card-head">
+            <h2>📷 교회 앨범</h2>
+            <Link to="/albums">전체 보기</Link>
+          </div>
+          <AlbumCards items={data.albums} />
+        </section>
+      )}
+
       <section className="pub-card">
         <div className="pub-card-head">
           <h2>다가오는 행사</h2>
@@ -187,6 +200,7 @@ function NewsPage() {
         {NEWS_CATS.map((c) => (
           <button key={c} className={cat === c ? 'on' : ''} onClick={() => setCat(c)}>{c}</button>
         ))}
+        <Link to="/albums" className="pub-chip-link">📷 교회 앨범</Link>
       </div>
       {data ? <NewsList items={data} /> : <Status error={error} />}
     </section>
