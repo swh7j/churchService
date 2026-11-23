@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "교회 회계 및 교인 관리 시스템 (연습용, 로컬 실행)",
+  "description": "교회 회계·교인·주보·예배 자료 관리 웹 서비스 (실제 교회 운영 중)",
   "scripts": {
     "dev": "concurrently -k -n api,web -c blue,green \"node scripts/run-api.mjs\" \"vite\"",
     "build": "vite build --outDir api/src/main/resources/static --emptyOutDir && node scripts/run-api.mjs package",
