@@ -8,6 +8,8 @@ import BulletinSheets, { FlipBackOption } from '../pages/bulletin/BulletinSheets
 import { parseLayout, parseTemplate } from '../pages/bulletin/layout';
 import { dday, kdate } from '../utils';
 import PrayerBoard from './PrayerBoard';
+import InstallApp from '../InstallApp';
+import { setAppTitle } from '../pwa';
 import { SheetDetail, SheetList } from './Sheets';
 import { AlbumCards, AlbumDetail, AlbumList } from './Albums';
 
@@ -39,6 +41,7 @@ export default function PublicApp() {
   const church = info?.churchName || '';
   useEffect(() => {
     if (church) document.title = church;
+    setAppTitle(church); // 아이폰 홈 화면 아이콘 이름
   }, [church]);
 
   return (
@@ -105,6 +108,8 @@ function Home() {
           <p>아직 올라온 주보가 없습니다.</p>
         )}
       </section>
+
+      <InstallApp />
 
       <section className="pub-card">
         <div className="pub-card-head">

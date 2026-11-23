@@ -2,8 +2,14 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>교회 관리 시스템</title>
+    <!-- 홈 화면 앱(PWA): 교회별 앱 정보(manifest)와 아이폰 아이콘은 src/pwa.js 가 주소에 맞춰 붙임 -->
+    <meta name="theme-color" content="#1b2440" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
   </head>
   <body>
     <div id="root"></div>

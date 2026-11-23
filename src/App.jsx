@@ -3,6 +3,8 @@ import { BrowserRouter, NavLink, Route, Routes, useLocation } from 'react-router
 import { api } from './api';
 import { BASE, churchPath } from './church';
 import { AppCtx, canDo, Form, Loading, Modal } from './components';
+import InstallApp from './InstallApp';
+import { setAppTitle } from './pwa';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Members from './pages/Members';
@@ -71,6 +73,7 @@ function Main({ user, onLogout }) {
   const churchName = settings.church_name || '우리교회';
   useEffect(() => {
     document.title = `${churchName} 관리 시스템`;
+    setAppTitle(`${churchName} 관리`); // 아이폰 홈 화면 아이콘 이름
   }, [churchName]);
 
   const changePassword = async (v) => {
@@ -113,6 +116,7 @@ function Main({ user, onLogout }) {
             <a className="public-link" href="/platform" target="_blank" rel="noreferrer">전체 관리자 페이지 만들기 ↗</a>
           )}
           <a className="public-link" href={churchPath('/')} target="_blank" rel="noreferrer">성도 화면 보기 ↗</a>
+          <InstallApp variant="link" label="관리 앱으로 설치" />
           <div className="account">
             <div className="account-name">{user.name}</div>
             <div className="account-role">{user.roleLabel} · {user.username}</div>
