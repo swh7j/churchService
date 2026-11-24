@@ -1,10 +1,10 @@
 // 공용 찬송가 보관함: 찬송가·교독문·경배와 찬양 화면을 모든 교회가 같이 씀
 // - 교회 관리자 화면(/hymns): 보기·미리보기만. 예배 PPT를 만들 때 주보의 번호·곡 제목에 맞춰 자동으로 들어감
-// - 전체 관리자 화면(/platform/library): 올리기·지우기·제목 고치기·교회 보관함에서 가져오기 (manage)
+// - 전체 관리자 화면(/platform/library): 올리기·지우기·제목 고치기 (manage)
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
 import { withChurch } from '../church';
-import { askConfirm, Card, confirmDelete, Loading, Modal, PageHeader } from '../components';
+import { Card, confirmDelete, Loading, Modal, PageHeader } from '../components';
 import { imagesFromFiles, packImages, unpackImages } from './bulletin/pptx';
 
 export const KINDS = {
@@ -214,7 +214,6 @@ export default function Hymns({ manage = false }) {
         <p className="muted small">공용 보관함은 전체 관리자가 관리합니다. 없는 곡이 있으면 전체 관리자에게 파일을 보내 주세요.</p>
       )}
 
-      {manage && <ImportFromChurch onDone={load} />}
 
       <Card
         title={lib ? `저장된 ${K.label} ${rows.length}곡 (${mb(total)})` : `저장된 ${K.label}`}
@@ -259,49 +258,6 @@ export default function Hymns({ manage = false }) {
 
       {preview && <Preview r={preview} url={fileUrl(manage, preview)} onClose={() => setPreview(null)} />}
     </>
-  );
-}
-
-/** 전체 관리자: 한 교회의 예전 찬송가 보관함을 공용으로 복사 */
-function ImportFromChurch({ onDone }) {
-  const [list, setList] = useState([]);
-  const [code, setCode] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState('');
-  useEffect(() => {
-    api.get('/platform/churches').then((l) => setList(l)).catch(() => {});
-  }, []);
-  const run = async () => {
-    const c = list.find((x) => x.code === code);
-    if (!c) return;
-    const ok = await askConfirm(`${c.name}의 찬송가 보관함(찬송가·교독문)을 공용 보관함으로 복사할까요? 공용에 이미 있는 번호는 건너뜁니다. 곡이 많으면 몇 분 걸립니다.`, { ok: '복사' });
-    if (!ok) return;
-    setBusy(true);
-    setMsg('복사하는 중… 창을 닫지 마세요.');
-    try {
-      const r = await api.post('/platform/library/import', { church: code });
-      setMsg(`복사 ${r.copied}곡 · 이미 있어서 건너뜀 ${r.skipped}곡` + (r.failed ? ` · 실패 ${r.failed}곡` : ''));
-      onDone();
-    } catch (e) {
-      setMsg(e.message);
-    } finally {
-      setBusy(false);
-    }
-  };
-  return (
-    <Card title="교회 보관함에서 가져오기">
-      <p className="muted small">공용 보관함이 생기기 전에 각 교회 관리자 화면에서 올렸던 찬송가·교독문을 공용으로 복사합니다. 찬송 제목도 같이 옵니다.</p>
-      <div className="hymn-upload">
-        <select value={code} onChange={(e) => setCode(e.target.value)} disabled={busy}>
-          <option value="">교회 고르기</option>
-          {list.map((c) => (
-            <option key={c.code} value={c.code}>{c.name} ({c.code})</option>
-          ))}
-        </select>
-        <button className="btn" onClick={run} disabled={!code || busy}>{busy ? '복사하는 중…' : '공용으로 복사'}</button>
-      </div>
-      {msg && <p className="small">{msg}</p>}
-    </Card>
   );
 }
 

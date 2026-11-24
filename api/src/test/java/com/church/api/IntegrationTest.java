@@ -100,13 +100,51 @@ public abstract class IntegrationTest {
 		}
 	}
 
+	public static final String PLATFORM_PW = "platform-pass-1234";
+
+	/** 전체 관리자로 로그인한 클라이언트 (처음이면 운영 교회 관리자 브라우저에서 첫 계정을 만듦) */
+	protected synchronized Client platform() {
+		Client p = admin();
+		if (p.get("/api/platform/me").json().path("setupRequired").asBoolean()) {
+			p.post("/api/platform/setup", Map.of("username", "root", "name", "전체", "password", PLATFORM_PW)).ok();
+		} else {
+			p.post("/api/platform/login", Map.of("username", "root", "password", PLATFORM_PW)).ok();
+		}
+		return p;
+	}
+
+	/** 다른 교회로 요청하는 클라이언트 (X-Church 헤더가 그 교회, null 이면 헤더 없음) */
+	protected Client clientFor(String church) {
+		return new Client(base(), church);
+	}
+
 	public static class Client {
 		private final String base;
+		private final String church;
+		private final CookieManager cookies = new CookieManager();
 		private final HttpClient http;
 
 		Client(String base) {
+			this(base, CHURCH);
+		}
+
+		Client(String base, String church) {
 			this.base = base;
-			this.http = HttpClient.newBuilder().cookieHandler(new CookieManager()).build();
+			this.church = church;
+			this.http = HttpClient.newBuilder().cookieHandler(cookies).build();
+		}
+
+		/** 받은 쿠키 값 (없으면 null) */
+		public String cookie(String name) {
+			return cookies.getCookieStore().getCookies().stream().filter(c -> c.getName().equals(name)).map(java.net.HttpCookie::getValue).findFirst().orElse(null);
+		}
+
+		/** 쿠키를 직접 넣기 (다른 교회 쿠키를 훔쳐 쓰는 경우 시험) */
+		public void setCookie(String name, String value) {
+			java.net.HttpCookie c = new java.net.HttpCookie(name, value);
+			c.setPath("/");
+			c.setVersion(0);
+			cookies.getCookieStore().add(URI.create(base), c);
 		}
 
 		public Res get(String path) {
@@ -130,6 +168,11 @@ public abstract class IntegrationTest {
 			return send(HttpRequest.newBuilder(uri(path)).header("Content-Type", contentType).POST(BodyPublishers.ofByteArray(body)));
 		}
 
+		/** 바이트 본문 PUT (파일 올리기 등) */
+		public Res putRaw(String path, String contentType, byte[] body) {
+			return send(HttpRequest.newBuilder(uri(path)).header("Content-Type", contentType).PUT(BodyPublishers.ofByteArray(body)));
+		}
+
 		private HttpRequest.Builder json(String path) {
 			return HttpRequest.newBuilder(uri(path)).header("Content-Type", "application/json");
 		}
@@ -140,7 +183,8 @@ public abstract class IntegrationTest {
 
 		private Res send(HttpRequest.Builder b) {
 			try {
-				HttpResponse<String> r = http.send(b.header("X-Church", CHURCH).build(), BodyHandlers.ofString());
+				if (church != null) b.header("X-Church", church);
+				HttpResponse<String> r = http.send(b.build(), BodyHandlers.ofString());
 				return new Res(r.statusCode(), r.body(), r);
 			} catch (IOException e) {
 				throw new UncheckedIOException(e);

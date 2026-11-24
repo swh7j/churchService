@@ -181,6 +181,28 @@ CREATE TABLE IF NOT EXISTS prayers (
   created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
 
+-- 성도 화면 요청·제보 게시판 (악보 요청, 오류 제보 등). 로그인 없이 작성, 작성할 때 정한 비밀번호로 삭제
+-- 교회 관리자와 전체 관리자가 처리 상태·답변을 남김. 비밀글은 관리자와 작성자(비밀번호)만 내용을 봄
+CREATE TABLE IF NOT EXISTS support_requests (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  category TEXT NOT NULL,                 -- 악보 요청 / 오류 제보 / 기타 문의
+  title TEXT NOT NULL,
+  content TEXT NOT NULL,
+  nickname TEXT,
+  password_hash TEXT NOT NULL,
+  is_secret INTEGER NOT NULL DEFAULT 0,
+  status TEXT NOT NULL DEFAULT '접수',     -- 접수 / 처리 중 / 완료
+  answer TEXT,
+  answered_by TEXT,                       -- 교회 관리자 / 전체 관리자
+  answered_at TEXT,
+  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+-- 도배 방지(10분에 20개)용 작성 기록 (접속 주소는 그대로 두지 않고 암호화한 값만, 글을 지워도 남음)
+CREATE TABLE IF NOT EXISTS support_post_log (
+  ip_hash TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+
 -- 악보: 관리자가 올린 여러 장을 화면에서 세로로 이어 붙인 JPEG 한 장
 CREATE TABLE IF NOT EXISTS sheets (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -200,7 +222,8 @@ CREATE TABLE IF NOT EXISTS worship_ppt (
   updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
 
--- 예배 PPT 에 끼워 넣을 화면 (찬송 악보, 교독문). 번호별로 그림들을 zip 하나로 보관
+-- (더 이상 안 씀) 예전 교회별 찬송가 보관함. 지금은 공용 찬송가 보관함(SongLibrary, data/library)을 씀.
+-- 운영 DB 에서는 비워 두었고, 표만 남겨 둠 (지우려면 DB 변경이 따로 필요)
 CREATE TABLE IF NOT EXISTS ppt_inserts (
   kind TEXT NOT NULL,            -- hymn(찬송가) / reading(교독문)
   no TEXT NOT NULL,              -- 장·번 번호

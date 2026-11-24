@@ -9,7 +9,6 @@ import java.nio.file.StandardCopyOption;
 import java.nio.file.attribute.FileTime;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -23,7 +22,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import com.church.api.common.ApiException;
-import com.church.api.tenant.ChurchContext;
 import com.church.api.tenant.ChurchRegistry;
 
 /**
@@ -44,15 +42,11 @@ public class SongLibrary {
 	private static final Duration KEEP_DELETED = Duration.ofDays(30);
 
 	private final JdbcTemplate db; // platform.db
-	private final JdbcTemplate churchJdbc; // 지금 교회 DB (가져오기용)
-	private final ChurchRegistry churches;
 	private final Path root;
 	private final Path backupRoot;
 
-	public SongLibrary(ChurchRegistry churches, JdbcTemplate churchJdbc, @Value("${app.backup-dir}") String backupDir) {
-		this.churches = churches;
+	public SongLibrary(ChurchRegistry churches, @Value("${app.backup-dir}") String backupDir) {
 		this.db = churches.platformJdbc();
-		this.churchJdbc = churchJdbc;
 		this.root = churches.dataDir().resolve("library");
 		this.backupRoot = Path.of(backupDir).toAbsolutePath().normalize().resolve("_library");
 		db.execute("""
@@ -179,54 +173,6 @@ public class SongLibrary {
 			}
 		} catch (IOException e) {
 			log.warn("보관함 파일 삭제 중 문제: {} {}", name, e.getMessage());
-		}
-	}
-
-	/**
-	 * 한 교회의 찬송가 보관함(ppt_inserts)을 공용으로 복사. 한 곡씩 읽어서 메모리를 적게 씀.
-	 * 찬송 제목은 그 교회의 '찬송 제목 모음'에서 가져옴. replace 가 아니면 공용에 이미 있는 번호는 건너뜀.
-	 */
-	public Map<String, Object> importFrom(String churchCode, boolean replace) {
-		if (churches.find(churchCode) == null) throw ApiException.notFound("없는 교회입니다.");
-		Map<String, Integer> done = new LinkedHashMap<>(Map.of("copied", 0, "skipped", 0, "failed", 0));
-		ChurchContext.run(churchCode, () -> {
-			Map<String, String> titles = hymnTitles();
-			List<Map<String, Object>> rows = churchJdbc.queryForList("SELECT kind, no FROM ppt_inserts ORDER BY kind, CAST(no AS INTEGER)");
-			for (Map<String, Object> r : rows) {
-				String kind = (String) r.get("kind"), no = (String) r.get("no");
-				if (!KINDS.contains(kind)) continue;
-				if (!replace && exists(kind, number(no))) {
-					done.merge("skipped", 1, Integer::sum);
-					continue;
-				}
-				try {
-					byte[] zip = churchJdbc.queryForObject("SELECT file FROM ppt_inserts WHERE kind = ? AND no = ?", byte[].class, kind, no);
-					save(kind, no, kind.equals("hymn") ? titles.get(no) : null, zip);
-					done.merge("copied", 1, Integer::sum);
-				} catch (RuntimeException e) {
-					log.warn("보관함 가져오기 실패: {} {} {}", kind, no, e.getMessage());
-					done.merge("failed", 1, Integer::sum);
-				}
-			}
-		});
-		log.info("공용 보관함 가져오기 ({}): {}", churchCode, done);
-		return Map.copyOf(done);
-	}
-
-	/** 지금 교회의 찬송 제목 모음 {"301":"지금까지 지내온 것"} */
-	private Map<String, String> hymnTitles() {
-		List<String> v = churchJdbc.queryForList("SELECT value FROM settings WHERE key = 'hymn_titles'", String.class);
-		if (v.isEmpty() || v.get(0) == null) return Map.of();
-		try {
-			Map<String, String> out = new LinkedHashMap<>();
-			tools.jackson.databind.JsonNode n = tools.jackson.databind.json.JsonMapper.builder().build().readTree(v.get(0));
-			n.properties().forEach(e -> {
-				String t = e.getValue().asString();
-				if (t != null && !t.isBlank()) out.put(e.getKey(), t);
-			});
-			return out;
-		} catch (RuntimeException e) {
-			return Map.of();
 		}
 	}
 

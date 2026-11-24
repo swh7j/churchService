@@ -1,4 +1,4 @@
-// 성도 화면: 로그인 없이 교회 소식 · 주보 · 악보 · 행사 일정 보기, 익명 기도제목 나누기
+// 성도 화면: 로그인 없이 교회 소식 · 주보 · 악보 · 행사 일정 보기, 익명 기도제목 나누기, 요청·제보
 import { useEffect, useState } from 'react';
 import { BrowserRouter, Link, NavLink, Route, Routes, useParams } from 'react-router-dom';
 import { api } from '../api';
@@ -8,6 +8,7 @@ import BulletinSheets, { FlipBackOption } from '../pages/bulletin/BulletinSheets
 import { parseLayout, parseTemplate } from '../pages/bulletin/layout';
 import { dday, kdate } from '../utils';
 import PrayerBoard from './PrayerBoard';
+import RequestBoard from './RequestBoard';
 import InstallApp from '../InstallApp';
 import { setAppTitle } from '../pwa';
 import { SheetDetail, SheetList } from './Sheets';
@@ -60,6 +61,7 @@ export default function PublicApp() {
           <NavLink to="/sheets">악보</NavLink>
           <NavLink to="/events">행사 일정</NavLink>
           <NavLink to="/prayers">기도제목</NavLink>
+          <NavLink to="/requests">요청·제보</NavLink>
         </nav>
         <main className="pub-main">
           <Routes>
@@ -73,6 +75,7 @@ export default function PublicApp() {
             <Route path="/sheets/:id" element={<SheetDetail />} />
             <Route path="/events" element={<EventsPage />} />
             <Route path="/prayers" element={<PrayerBoard />} />
+            <Route path="/requests" element={<RequestBoard />} />
             <Route path="*" element={<p className="pub-empty">없는 페이지입니다. <Link to="/">홈으로</Link></p>} />
           </Routes>
         </main>

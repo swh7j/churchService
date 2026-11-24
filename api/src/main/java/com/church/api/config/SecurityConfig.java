@@ -51,6 +51,8 @@ public class SecurityConfig {
 						.requestMatchers("/api/platform/**").permitAll() // 전체 관리자 페이지: 자체 로그인(PlatformAuth)으로 확인
 						// 성도 화면 익명 기도제목: 작성, 비밀번호로 삭제
 						.requestMatchers(HttpMethod.POST, "/api/public/prayers", "/api/public/prayers/*/delete").permitAll()
+						// 성도 화면 요청·제보 게시판: 작성, 비밀번호로 보기(비밀글)·삭제
+						.requestMatchers(HttpMethod.POST, "/api/public/requests", "/api/public/requests/*/view", "/api/public/requests/*/delete").permitAll()
 						.requestMatchers("/api/**").authenticated()
 						.anyRequest().permitAll()) // 화면 파일
 				.exceptionHandling(e -> e

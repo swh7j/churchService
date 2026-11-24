@@ -16,7 +16,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -31,7 +30,7 @@ import jakarta.servlet.http.HttpServletRequest;
 /**
  * 공용 찬송가 보관함 (SongLibrary).
  * - 교회 관리자: 목록 보기·화면 받기 (예배 PPT 에 넣을 때) — /api/library
- * - 전체 관리자: 올리기·지우기·교회 보관함에서 가져오기 — /api/platform/library
+ * - 전체 관리자: 올리기·지우기·제목 고치기 — /api/platform/library
  */
 @RestController
 public class LibraryController {
@@ -121,13 +120,5 @@ public class LibraryController {
 		lib.delete(kind, key);
 		log.info("[전체 관리자] {} 공용 보관함 삭제 {} {}", me.username(), kind, key);
 		return Map.of("ok", true);
-	}
-
-	/** 한 교회의 찬송가 보관함을 공용으로 복사 { church: 'demo', replace: false } */
-	@PostMapping("/api/platform/library/import")
-	public Map<String, Object> importFrom(@RequestBody Map<String, Object> body, HttpServletRequest req) {
-		PlatformUser me = auth.require(req);
-		log.info("[전체 관리자] {} 공용 보관함 가져오기 {}", me.username(), body.get("church"));
-		return lib.importFrom(Api.str(body.get("church")), Boolean.TRUE.equals(body.get("replace")));
 	}
 }

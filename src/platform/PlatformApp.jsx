@@ -6,6 +6,7 @@ import { api } from '../api';
 import { Badge, Card, Form, Loading, Modal, PageHeader, useList } from '../components';
 import Churches from './Churches';
 import Hymns from '../pages/Hymns';
+import PlatformRequests from './Requests';
 
 // 첫 계정을 만들 때만 운영 교회 로그인 정보를 같이 보냄
 async function withChurch(method, url, church, body) {
@@ -242,6 +243,7 @@ function Main({ user, onLogout }) {
             <NavLink to="/" end>교회 목록</NavLink>
             <NavLink to="/common-ppt">예배 PPT 공통 양식</NavLink>
             <NavLink to="/library">찬송가 보관함</NavLink>
+            <NavLink to="/requests">요청·제보 게시판</NavLink>
             <NavLink to="/accounts">전체 관리자 계정</NavLink>
           </div>
         </nav>
@@ -261,6 +263,7 @@ function Main({ user, onLogout }) {
           <Route path="/" element={<Churches />} />
           <Route path="/common-ppt" element={<CommonPpt />} />
           <Route path="/library" element={<Hymns manage />} />
+          <Route path="/requests" element={<PlatformRequests />} />
           <Route path="/accounts" element={<Accounts me={user} />} />
           <Route path="*" element={<p className="empty">없는 페이지입니다.</p>} />
         </Routes>

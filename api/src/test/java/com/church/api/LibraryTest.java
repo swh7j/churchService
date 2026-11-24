@@ -4,10 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.net.URI;
 import java.net.URLEncoder;
-import java.net.http.HttpRequest;
-import java.net.http.HttpRequest.BodyPublishers;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.zip.ZipEntry;
@@ -43,31 +40,13 @@ class LibraryTest extends IntegrationTest {
 		return URLEncoder.encode(s, StandardCharsets.UTF_8);
 	}
 
-	/** 바이트 본문 PUT (Client 에는 JSON PUT 만 있어서 직접) */
 	private Res putBytes(Client c, String path, byte[] body) {
-		try {
-			var f = Client.class.getDeclaredField("http");
-			f.setAccessible(true);
-			var http = (java.net.http.HttpClient) f.get(c);
-			var r = http.send(HttpRequest.newBuilder(URI.create(base() + path)).header("X-Church", CHURCH)
-					.header("Content-Type", "application/octet-stream").PUT(BodyPublishers.ofByteArray(body)).build(),
-					java.net.http.HttpResponse.BodyHandlers.ofString());
-			return new Res(r.statusCode(), r.body(), r);
-		} catch (Exception e) {
-			throw new IllegalStateException(e);
-		}
+		return c.putRaw(path, "application/octet-stream", body);
 	}
 
 	@BeforeAll
 	void platformLogin() {
-		// 첫 전체 관리자 계정은 운영 교회 관리자로 로그인한 브라우저에서 만듦
-		platform = admin();
-		Res me = platform.get("/api/platform/me").ok();
-		if (me.json().path("setupRequired").asBoolean()) {
-			platform.post("/api/platform/setup", Map.of("username", "root", "name", "전체", "password", "platform-pass-1234")).ok();
-		} else {
-			platform.post("/api/platform/login", Map.of("username", "root", "password", "platform-pass-1234")).ok();
-		}
+		platform = platform();
 	}
 
 	@Test
@@ -109,27 +88,6 @@ class LibraryTest extends IntegrationTest {
 		assertThat(putBytes(platform, "/api/platform/library/hymn?no=5", "not a zip".getBytes()).status()).isEqualTo(400);
 		assertThat(putBytes(platform, "/api/platform/library/song?no=5", zip(1)).status()).isEqualTo(400);
 		assertThat(putBytes(platform, "/api/platform/library/hymn?no=abc", zip(1)).status()).isEqualTo(400);
-	}
-
-	@Test
-	@DisplayName("교회 보관함에서 공용으로 가져오기: 화면과 찬송 제목이 함께 옴, 이미 있는 번호는 건너뜀")
-	void importFromChurch() throws IOException {
-		Client a = admin();
-		putBytes(a, "/api/worship-ppt/inserts/hymn/62", zip(4)).ok();
-		putBytes(a, "/api/worship-ppt/inserts/reading/15", zip(2)).ok();
-		a.put("/api/worship-ppt/hymns", Map.of("hymns", "{\"62\":\"고요히 머리숙여\"}")).ok();
-
-		JsonNode r = platform.post("/api/platform/library/import", Map.of("church", CHURCH)).ok().json();
-		assertThat(r.path("copied").asInt()).isGreaterThanOrEqualTo(2);
-		JsonNode again = platform.post("/api/platform/library/import", Map.of("church", CHURCH)).ok().json();
-		assertThat(again.path("copied").asInt()).isZero();
-
-		JsonNode h62 = null;
-		for (JsonNode x : a.get("/api/library").ok().json()) if (x.path("kind").asString().equals("hymn") && x.path("key").asString().equals("62")) h62 = x;
-		assertThat(h62).isNotNull();
-		assertThat(h62.path("count").asInt()).isEqualTo(4);
-		assertThat(h62.path("title").asString()).isEqualTo("고요히 머리숙여");
-		assertThat(a.get("/api/library/reading/15/file").status()).isEqualTo(200);
 	}
 
 	@Test
