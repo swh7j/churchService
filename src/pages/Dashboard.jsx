@@ -16,6 +16,16 @@ export default function Dashboard() {
   return (
     <>
       <PageHeader title="대시보드" desc={`${kdate(d.today)} 기준 현황`} />
+      {d.backup?.due && (
+        <div className="backup-remind" role="status">
+          <span>
+            💾 <strong>{d.backup.lastDownload ? `백업 파일을 내려받은 지 ${d.backup.days}일이 지났습니다.` : '아직 백업 파일을 내려받은 적이 없습니다.'}</strong>
+            <br />
+            서버가 고장 나면 서버 안의 백업도 함께 사라질 수 있습니다. 최근 백업을 내려받아 USB나 클라우드 드라이브에 보관해 주세요.
+          </span>
+          <Link className="btn sm primary" to="/backup">백업 내려받기</Link>
+        </div>
+      )}
       <div className="stats">
         <Stat label="재적 교인" value={`${num(d.members.active)}명`} sub={`이번 달 새로 등록 ${d.members.newThisMonth}명`} />
         {f && (

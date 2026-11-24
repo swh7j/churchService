@@ -103,6 +103,7 @@ public class LibraryController {
 		PptImages.Result p = PptImages.toZip(ppt);
 		Map<String, Object> r = new LinkedHashMap<>(lib.save(k, no, title, p.zip()));
 		r.put("skipped", p.skipped());
+		r.put("textSlides", p.textSlides()); // 글자가 빠졌을 수 있는 화면 수 (화면에서 경고)
 		log.info("[전체 관리자] {} 공용 보관함 저장 {} {}", me.username(), kind, r.get("key"));
 		return r;
 	}

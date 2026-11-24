@@ -63,6 +63,32 @@ public class BackupService {
 		this.root = Path.of(backupDir).toAbsolutePath().normalize();
 	}
 
+	// ---------- 백업 알림: 백업 파일을 서버 밖(관리자 컴퓨터)에 내려받아 두도록 ----------
+
+	/** 이 날수가 지나면 '백업을 내려받아 두세요' 알림 */
+	public static final int REMIND_DAYS = 30;
+	private static final String DOWNLOADED_KEY = "backup_downloaded_at";
+
+	/** 백업 파일을 내려받은 시각 기록 (지금 교회) */
+	public void markDownloaded() {
+		jdbc.update("INSERT INTO settings (key, value) VALUES (?, datetime('now','localtime')) ON CONFLICT(key) DO UPDATE SET value = excluded.value", DOWNLOADED_KEY);
+	}
+
+	/** { lastDownload: '2026-11-24 15:00:00' 또는 null, days: 지난 날수 또는 null, due: 알림을 띄울지, remindDays } */
+	public Map<String, Object> reminder() {
+		List<String> v = jdbc.queryForList("SELECT value FROM settings WHERE key = ?", String.class, DOWNLOADED_KEY);
+		String last = v.isEmpty() ? null : v.get(0);
+		Long days = null;
+		if (last != null) {
+			try {
+				days = Duration.between(LocalDateTime.parse(last.replace(' ', 'T')), LocalDateTime.now()).toDays();
+			} catch (RuntimeException e) {
+				last = null;
+			}
+		}
+		return Api.map("lastDownload", last, "days", days, "due", days == null || days >= REMIND_DAYS, "remindDays", REMIND_DAYS);
+	}
+
 	/** 지금 교회의 백업 폴더 */
 	public Path dir() {
 		Church c = churches.current();

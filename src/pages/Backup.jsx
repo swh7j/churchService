@@ -52,7 +52,12 @@ export default function Backup() {
           <li>
             <strong>저장 위치</strong>: <code>{data.dir}</code>
             <br />
-            <span className="warn">이 컴퓨터가 고장 나면 백업도 함께 사라집니다. 가끔 '다운로드'로 받아 USB나 클라우드 드라이브에 따로 보관하세요.</span>
+            <span className="warn">서버가 고장 나면 서버 안의 백업도 함께 사라질 수 있습니다. 한 달에 한 번은 '다운로드'로 받아 USB나 클라우드 드라이브에 따로 보관하세요.</span>
+          </li>
+          <li>
+            <strong>마지막으로 내려받은 날</strong>:{' '}
+            {data.reminder?.lastDownload ? `${data.reminder.lastDownload.slice(0, 10)} (${data.reminder.days}일 전)` : '아직 없음'}
+            {data.reminder?.due && <span className="warn"> · 대시보드에 알림이 뜹니다. 최근 백업을 내려받아 주세요.</span>}
           </li>
         </ul>
       </Card>

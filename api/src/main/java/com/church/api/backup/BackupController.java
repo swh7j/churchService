@@ -42,7 +42,7 @@ public class BackupController {
 
 	@GetMapping("/backups")
 	public Map<String, Object> list() {
-		return Api.map("dir", backups.dir().toString(), "list", backups.list());
+		return Api.map("dir", backups.dir().toString(), "list", backups.list(), "reminder", backups.reminder());
 	}
 
 	@PostMapping("/backups")
@@ -57,6 +57,7 @@ public class BackupController {
 	public ResponseEntity<FileSystemResource> download(@PathVariable String name) {
 		Path p = backups.path(name);
 		audit.log("백업 다운로드", "backups", name, null);
+		backups.markDownloaded(); // 백업 알림: 마지막으로 내려받은 날
 		return ResponseEntity.ok()
 				.header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(name).build().toString())
 				.contentType(MediaType.APPLICATION_OCTET_STREAM)

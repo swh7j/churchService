@@ -36,6 +36,7 @@ import org.apache.poi.hslf.usermodel.HSLFShape;
 import org.apache.poi.hslf.usermodel.HSLFSheet;
 import org.apache.poi.hslf.usermodel.HSLFSlide;
 import org.apache.poi.hslf.usermodel.HSLFSlideShow;
+import org.apache.poi.hslf.usermodel.HSLFTextShape;
 
 import com.church.api.common.ApiException;
 
@@ -55,7 +56,8 @@ public final class PptImages {
 	private PptImages() {
 	}
 
-	public record Result(byte[] zip, int count, int skipped) {
+	/** textSlides: 글자(가사 등)가 있는 화면 수 — 글자는 그리지 않으므로 빠졌을 수 있음 (올린 사람에게 경고) */
+	public record Result(byte[] zip, int count, int skipped, int textSlides) {
 	}
 
 	/** .ppt → 서버에 저장하는 형식의 zip (001.jpg, 002.jpg …) */
@@ -65,13 +67,14 @@ public final class PptImages {
 			throw ApiException.bad("파워포인트 97-2003(.ppt) 파일이 아닙니다.");
 		}
 		List<byte[]> images = new ArrayList<>();
-		int skipped = 0;
+		int skipped = 0, textSlides = 0;
 		try (HSLFSlideShow show = new HSLFSlideShow(new ByteArrayInputStream(ppt))) {
 			java.awt.Dimension size = show.getPageSize();
 			double scale = (double) HEIGHT / size.height;
 			int w = (int) Math.round(size.width * scale);
 			Pictures pics = new Pictures(show);
 			for (HSLFSlide slide : show.getSlides()) {
+				if (hasText(slide.getShapes())) textSlides++;
 				byte[] jpg = render(pics, slide, w, HEIGHT, scale);
 				if (jpg == null) skipped++;
 				else images.add(jpg);
@@ -94,7 +97,7 @@ public final class PptImages {
 		} catch (IOException e) {
 			throw ApiException.bad("화면을 저장하지 못했습니다.");
 		}
-		return new Result(out.toByteArray(), images.size(), skipped);
+		return new Result(out.toByteArray(), images.size(), skipped, textSlides);
 	}
 
 	/** 슬라이드 한 장 → JPEG (그림이 하나도 없으면 null) */
@@ -208,6 +211,15 @@ public final class PptImages {
 		if (opt == null) return 0;
 		EscherSimpleProperty p = opt.lookup(EscherPropertyTypes.FILL__PATTERNTEXTURE);
 		return p == null ? 0 : p.getPropertyValue();
+	}
+
+	/** 글자가 든 도형이 있는지 (쪽 번호 "1/8" 같은 숫자만 있는 건 빼고) */
+	static boolean hasText(List<HSLFShape> shapes) {
+		for (HSLFShape s : shapes) {
+			if (s instanceof HSLFGroupShape g && hasText(g.getShapes())) return true;
+			if (s instanceof HSLFTextShape t && t.getText() != null && t.getText().replaceAll("[\\s0-9/().:-]", "").length() >= 2) return true;
+		}
+		return false;
 	}
 
 	/** 묶음 안쪽 좌표 → 슬라이드 좌표 */

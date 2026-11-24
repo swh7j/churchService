@@ -56,6 +56,24 @@ class PptImagesTest {
 	}
 
 	@Test
+	@DisplayName("가사가 글자로 든 화면은 세어서 알려 줌 (글자는 그리지 않으므로 올린 사람에게 경고) — 쪽 번호만 있는 건 빼고")
+	void countsTextSlides() throws IOException {
+		assertThat(PptImages.toZip(sampleHymnPpt(2)).textSlides()).isZero();
+		try (HSLFSlideShow show = new HSLFSlideShow(new ByteArrayInputStream(sampleHymnPpt(3))); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+			var lyric = show.getSlides().get(0).createTextBox();
+			lyric.setText("주 예수 사랑 기쁨 내 마음속에");
+			lyric.setAnchor(new Rectangle2D.Double(50, 50, 400, 100));
+			var page = show.getSlides().get(1).createTextBox();
+			page.setText("2/8");
+			page.setAnchor(new Rectangle2D.Double(10, 500, 60, 30));
+			show.write(out);
+			PptImages.Result r = PptImages.toZip(out.toByteArray());
+			assertThat(r.count()).isEqualTo(3);
+			assertThat(r.textSlides()).isEqualTo(1);
+		}
+	}
+
+	@Test
 	@DisplayName(".ppt 가 아니면 알아듣기 쉬운 오류")
 	void rejectsNonPpt() {
 		assertThatThrownBy(() -> PptImages.toZip("hello".getBytes())).isInstanceOf(ApiException.class).hasMessageContaining(".ppt");

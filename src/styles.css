@@ -545,6 +545,7 @@ td.detail { font-size: 12px; color: var(--muted); max-width: 520px; word-break: 
 .hymn-jobs .job-state { margin-left: auto; }
 .hymn-jobs .job-done .job-state { color: #1f7a3a; }
 .hymn-jobs .job-fail .job-state { color: #b3261e; }
+.hymn-jobs .job-warn .job-state { color: #9a6700; }
 .hymn-jobs .job-skip .job-state, .hymn-jobs .job-wait .job-state { color: var(--muted); }
 .hymn-search { width: 160px; }
 .hymn-preview { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 10px; }
@@ -598,3 +599,8 @@ td.detail { font-size: 12px; color: var(--muted); max-width: 520px; word-break: 
 .rqa-edit select { width: auto; }
 .rqa-edit textarea { width: 100%; min-height: 38px; resize: vertical; }
 @media (max-width: 640px) { .rqa-edit { grid-template-columns: 1fr; } .rqa-when { margin-left: 0; width: 100%; } }
+
+/* 대시보드 백업 알림 */
+.backup-remind { display: flex; gap: 14px; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 16px; padding: 12px 16px; border-radius: 10px; background: #fff7e6; border: 1px solid #f1d49a; color: #6b4a07; font-size: 14px; line-height: 1.6; }
+.backup-remind strong { color: #5a3d00; }
+.hymn-name strong { text-decoration: underline; text-underline-offset: 3px; }

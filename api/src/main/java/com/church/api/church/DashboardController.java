@@ -9,18 +9,21 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.church.api.auth.Roles;
+import com.church.api.backup.BackupService;
 import com.church.api.common.Api;
 
-/** 대시보드: 재정 권한이 없으면 finance 는 null */
+/** 대시보드: 재정 권한이 없으면 finance 는 null, 관리자가 아니면 backup(백업 알림)은 null */
 @RestController
 public class DashboardController {
 
 	private final JdbcTemplate jdbc;
 	private final BirthdayService birthdays;
+	private final BackupService backups;
 
-	public DashboardController(JdbcTemplate jdbc, BirthdayService birthdays) {
+	public DashboardController(JdbcTemplate jdbc, BirthdayService birthdays, BackupService backups) {
 		this.jdbc = jdbc;
 		this.birthdays = birthdays;
+		this.backups = backups;
 	}
 
 	@GetMapping("/api/dashboard")
@@ -63,6 +66,7 @@ public class DashboardController {
 				"attendance", Api.map("date", lastAtt, "list", attList),
 				"news", jdbc.queryForList("SELECT id, title, category, date, pinned FROM news ORDER BY pinned DESC, date DESC, id DESC LIMIT 5"),
 				"events", jdbc.queryForList("SELECT * FROM events WHERE COALESCE(end_date, start_date) >= ? ORDER BY start_date LIMIT 5", t),
-				"birthdays", birthdays.inMonth(YearMonth.now(), false));
+				"birthdays", birthdays.inMonth(YearMonth.now(), false),
+				"backup", Roles.has(Roles.current(), "admin") ? backups.reminder() : null);
 	}
 }

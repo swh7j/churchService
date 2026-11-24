@@ -332,11 +332,14 @@ async function toWebImage(data, ext) {
 /**
  * 올린 파일들 → 화면 그림 목록.
  * 그림 파일은 한 장이 한 화면, .pptx 는 화면마다 가장 큰 그림을 꺼냄 (그림으로 된 악보 PPT).
- * 돌려줌: { images: [{data, ext}], skipped: 그림이 없어 뺀 화면 수 }
+ * 돌려줌: { images: [{data, ext}], skipped: 그림이 없어 뺀 화면 수,
+ *   textSlides: 글자(가사 등)가 있는 화면 수, layered: 그림이 여러 개 겹친 화면 수 } — 둘 다 가장 큰 그림만 쓰므로 빠진 내용이 있을 수 있음
  */
 export async function imagesFromFiles(files) {
   const images = [];
   let skipped = 0;
+  let textSlides = 0;
+  let layered = 0;
   for (const f of files) {
     const ext = (f.name.match(/\.([a-z0-9]+)$/i)?.[1] || '').toLowerCase();
     if (ext === 'ppt') throw new Error('옛날 형식(.ppt)은 읽을 수 없습니다. 파워포인트에서 .pptx 로 저장하거나, 다른 이름으로 저장 → JPEG 로 그림을 만들어 올려 주세요.');
@@ -350,6 +353,9 @@ export async function imagesFromFiles(files) {
     const zip = await loadZip(data);
     for (const path of await slidePaths(zip)) {
       const doc = parse(await zip.file(path).async('string'));
+      // 쪽 번호("1/8") 같은 숫자만 있는 글자는 빼고 셈
+      if (els(doc, A, 't').map((t) => t.textContent).join('').replace(/[\s0-9/().:-]/g, '').length >= 2) textSlides++;
+      if (els(doc, A, 'blip').length > 1) layered++;
       const rf = zip.file(relsOf(path));
       const rels = rf ? Object.fromEntries(els(parse(await rf.async('string')), PKG, 'Relationship').map((r) => [r.getAttribute('Id'), r.getAttribute('Target')])) : {};
       let best = null;
@@ -365,7 +371,7 @@ export async function imagesFromFiles(files) {
       else skipped++;
     }
   }
-  return { images, skipped };
+  return { images, skipped, textSlides, layered };
 }
 
 /** 그림 목록 → 서버에 저장하는 zip (001.jpg, 002.png …) */

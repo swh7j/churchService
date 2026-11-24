@@ -47,6 +47,23 @@ export function parsePraise(name) {
   return { no: m ? String(Number(m[1])) : '', title };
 }
 
+const TO_JPEG = "파워포인트에서 '다른 이름으로 저장 → JPEG'로 모든 화면을 그림으로 만들어 그 그림들을 올려 주세요.";
+
+/**
+ * 파일 앞부분으로 실제 형식 확인: .pptx 는 zip(PK…), 옛날 .ppt 는 D0 CF 11 E0.
+ * 이름과 다르면 실제 형식의 이름을 붙인 새 File 을 돌려줌 (renamed 표시)
+ */
+async function realType(f) {
+  const e = ext(f.name);
+  if (e !== 'ppt' && e !== 'pptx') return f;
+  const b = new Uint8Array(await f.slice(0, 4).arrayBuffer());
+  const real = b[0] === 0x50 && b[1] === 0x4b ? 'pptx' : b[0] === 0xd0 && b[1] === 0xcf ? 'ppt' : e;
+  if (real === e) return f;
+  const fixed = new File([f], f.name.replace(/\.[^.]+$/, '.' + real), { type: f.type, lastModified: f.lastModified });
+  fixed.renamed = true;
+  return fixed;
+}
+
 const natural = (a, b) => a.localeCompare(b, 'ko', { numeric: true });
 const mb = (n) => `${(Number(n || 0) / 1024 / 1024).toFixed(1)}MB`;
 const enc = encodeURIComponent;
@@ -83,9 +100,11 @@ export default function Hymns({ manage = false }) {
 
   /** 고른 파일들 → 곡별로 묶어서 하나씩 올림 */
   const pick = async (e) => {
-    const files = [...e.target.files].sort((a, b) => natural(a.name, b.name));
+    const picked = [...e.target.files].sort((a, b) => natural(a.name, b.name));
     e.target.value = '';
-    if (!files.length) return;
+    if (!picked.length) return;
+    // 이름은 .ppt 인데 속은 .pptx (또는 반대)인 파일이 많아서, 파일 앞부분을 보고 실제 형식으로 이름을 맞춤
+    const files = await Promise.all(picked.map(realType));
     const groups = new Map();
     const bad = [];
     for (const f of files) {
@@ -100,6 +119,7 @@ export default function Hymns({ manage = false }) {
         // 같은 곡 PPT가 두 개면 (번호만 다른 같은 곡 등) 첫 번째만 올림
         if (isPpt(f) && g.files.some(isPpt)) g.dups.push(f.name);
         else g.files.push(f);
+        if (f.renamed) g.renamed = true;
         if (!g.title && p.title) g.title = p.title;
         groups.set(id, g);
       }
@@ -125,16 +145,23 @@ export default function Hymns({ manage = false }) {
           r = await res.json().catch(() => null);
           if (!res.ok) throw new Error(r?.error || '저장하지 못했습니다.');
         } else {
-          const { images, skipped } = await imagesFromFiles(g.files);
-          if (!images.length) throw new Error('그림을 찾지 못했습니다. 글자로 된 PPT는 파워포인트에서 다른 이름으로 저장 → JPEG 로 그림을 만들어 올려 주세요.');
+          const { images, skipped, textSlides, layered } = await imagesFromFiles(g.files);
+          if (!images.length) throw new Error(`그림을 찾지 못했습니다. 글자로 된 PPT입니다. ${TO_JPEG}`);
           const res = await fetch(`/api/platform/library/${kind}?${params}`, { method: 'PUT', headers: { 'Content-Type': 'application/octet-stream' }, body: await packImages(images) });
           r = await res.json().catch(() => null);
           if (!res.ok) throw new Error(r?.error || '저장하지 못했습니다.');
-          r.skipped = skipped;
+          Object.assign(r, { skipped, textSlides, layered });
         }
+        // 저장은 됐지만 글자(가사)나 겹친 그림이 빠졌을 수 있으면 경고로 표시
+        const lost = [r.textSlides ? `글자(가사 등)가 있는 화면 ${r.textSlides}개` : '', r.layered ? `그림이 겹친 화면 ${r.layered}개` : ''].filter(Boolean);
         setJob(g.id, {
-          status: 'done',
-          msg: `${r.count}화면 저장` + (r.skipped ? ` (그림 없는 화면 ${r.skipped}개 뺌)` : '') + (g.dups.length ? ` · 같은 곡 파일 ${g.dups.join(', ')} 은 건너뜀` : ''),
+          status: lost.length ? 'warn' : 'done',
+          msg:
+            `${r.count}화면 저장` +
+            (r.skipped ? ` (그림 없는 화면 ${r.skipped}개 뺌)` : '') +
+            (g.renamed ? ' · 이름과 실제 형식이 달라 맞춰서 처리' : '') +
+            (g.dups.length ? ` · 같은 곡 파일 ${g.dups.join(', ')} 은 건너뜀` : '') +
+            (lost.length ? ` ⚠ ${lost.join(', ')} — 내용이 빠졌을 수 있습니다. 미리보기로 확인하고, 빠졌으면 ${TO_JPEG}` : ''),
         });
       } catch (err) {
         setJob(g.id, { status: 'fail', msg: err.message });
@@ -154,7 +181,7 @@ export default function Hymns({ manage = false }) {
   };
 
   const total = rows.reduce((s, r) => s + Number(r.size || 0), 0);
-  const counts = jobs ? { done: jobs.filter((j) => j.status === 'done').length, fail: jobs.filter((j) => j.status === 'fail').length, skip: jobs.filter((j) => j.status === 'skip').length } : null;
+  const counts = jobs ? { done: jobs.filter((j) => j.status === 'done').length, fail: jobs.filter((j) => j.status === 'fail').length, skip: jobs.filter((j) => j.status === 'skip').length, warn: jobs.filter((j) => j.status === 'warn').length } : null;
 
   return (
     <>
@@ -195,7 +222,7 @@ export default function Hymns({ manage = false }) {
           {jobs && (
             <div className="hymn-jobs">
               <div className="small">
-                {busy ? '올리는 중…' : '끝났습니다.'} 저장 {counts.done} · 건너뜀 {counts.skip} · 실패 {counts.fail}
+                {busy ? '올리는 중…' : '끝났습니다.'} 저장 {counts.done + counts.warn}{counts.warn ? ` (확인 필요 ${counts.warn})` : ''} · 건너뜀 {counts.skip} · 실패 {counts.fail}
                 {!busy && <button className="link" onClick={() => setJobs(null)}> 닫기</button>}
               </div>
               <ul>
@@ -203,7 +230,7 @@ export default function Hymns({ manage = false }) {
                   <li key={j.id} className={'job-' + j.status}>
                     <strong>{j.label}</strong>
                     {K.byNo && j.title && <span className="muted">{j.title}</span>}
-                    <span className="job-state">{{ wait: '대기', run: '올리는 중…', done: '✓', skip: '건너뜀', fail: '✕' }[j.status]} {j.msg}</span>
+                    <span className="job-state">{{ wait: '대기', run: '올리는 중…', done: '✓', warn: '✓ 확인 필요', skip: '건너뜀', fail: '✕' }[j.status]} {j.msg}</span>
                   </li>
                 ))}
               </ul>
@@ -235,7 +262,7 @@ export default function Hymns({ manage = false }) {
               <tbody>
                 {shown.map((r) => (
                   <tr key={r.key}>
-                    <td><strong>{nameOf(r)}</strong></td>
+                    <td><button className="link hymn-name" onClick={() => setPreview(r)} title="화면 미리보기"><strong>{nameOf(r)}</strong></button></td>
                     {kind === 'hymn' && <td>{r.title || <span className="muted">-</span>}</td>}
                     {kind === 'praise' && <td className="muted small">{r.no || '-'}</td>}
                     <td>{r.count}화면</td>
