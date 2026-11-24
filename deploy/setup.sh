@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # =====================================================================
-#  교회 관리 시스템 - 서버 설치 / 업데이트 스크립트 (Ubuntu 22.04 / 24.04 — 오라클, 구글 등)
+#  교회 관리 시스템 - 서버 설치 / 업데이트 스크립트 (구글 클라우드 Ubuntu 22.04 / 24.04)
 #
 #  사용법 (서버에서):
 #     sudo bash setup.sh <도메인>
-#  예)  sudo bash setup.sh 152-70-11-22.sslip.io
+#  예)  sudo bash setup.sh 34-82-11-22.sslip.io
 #
 #  같은 폴더에 church-api.jar 가 있어야 합니다.
 #  여러 번 실행해도 안전합니다. (업데이트할 때도 이 스크립트를 다시 실행)
@@ -22,15 +22,15 @@ say() { echo -e "\n\033[1;34m[$1]\033[0m $2"; }
 die() { echo -e "\n\033[1;31m오류:\033[0m $1" >&2; exit 1; }
 
 [ "$(id -u)" -eq 0 ] || die "sudo 를 붙여서 실행해 주세요.  예) sudo bash setup.sh $DOMAIN"
-[ -n "$DOMAIN" ] || die "도메인을 입력해 주세요.  예) sudo bash setup.sh 152-70-11-22.sslip.io"
+[ -n "$DOMAIN" ] || die "도메인을 입력해 주세요.  예) sudo bash setup.sh 34-82-11-22.sslip.io"
 [ -f "$JAR_SRC" ] || die "church-api.jar 파일이 $HERE 에 없습니다. 먼저 업로드해 주세요."
 
 # ---------------------------------------------------------------------
-say "1/7" "시간대를 한국 시간으로 설정"
+say "1/6" "시간대를 한국 시간으로 설정"
 timedatectl set-timezone Asia/Seoul || true
 
 # ---------------------------------------------------------------------
-say "2/7" "필요한 프로그램 설치 (Java 17, Caddy 웹서버)"
+say "2/6" "필요한 프로그램 설치 (Java 17, Caddy 웹서버)"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y -q
 apt-get install -y -q openjdk-17-jre-headless curl ca-certificates gnupg
@@ -44,7 +44,7 @@ if ! command -v caddy >/dev/null 2>&1; then
 fi
 
 # ---------------------------------------------------------------------
-say "3/7" "메모리가 작으면 스왑(가상 메모리) 추가"
+say "3/6" "메모리가 작으면 스왑(가상 메모리) 추가"
 MEM_MB=$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo)
 if [ "$MEM_MB" -lt 2000 ] && ! swapon --show | grep -q '/swapfile'; then
   fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
@@ -56,7 +56,7 @@ fi
 if [ "$MEM_MB" -lt 2000 ]; then XMX=384m; elif [ "$MEM_MB" -lt 4000 ]; then XMX=768m; else XMX=1g; fi
 
 # ---------------------------------------------------------------------
-say "4/7" "프로그램 설치 ($APP)"
+say "4/6" "프로그램 설치 ($APP)"
 id church >/dev/null 2>&1 || useradd --system --home "$APP" --shell /usr/sbin/nologin church
 mkdir -p "$APP/data" "$APP/backups"
 install -m 644 "$JAR_SRC" "$APP/church-api.jar"
@@ -108,7 +108,7 @@ WantedBy=multi-user.target
 EOF
 
 # ---------------------------------------------------------------------
-say "5/7" "HTTPS 웹서버 설정 ($DOMAIN)"
+say "5/6" "HTTPS 웹서버 설정 ($DOMAIN)"
 cat > /etc/caddy/Caddyfile <<EOF
 $DOMAIN {
 	encode gzip
@@ -131,27 +131,10 @@ $DOMAIN {
 }
 EOF
 
-# ---------------------------------------------------------------------
-say "6/7" "방화벽에서 80, 443 포트 열기"
-# 오라클 Ubuntu 이미지는 iptables 로 대부분의 포트를 막아 둡니다. (구글 등은 콘솔 방화벽만 쓰므로 영향 없음)
-if command -v iptables >/dev/null 2>&1; then
-for PORT in 80 443; do
-  if ! iptables -C INPUT -p tcp --dport "$PORT" -m state --state NEW -j ACCEPT 2>/dev/null; then
-    LINE=$(iptables -L INPUT --line-numbers | awk '/REJECT/ {print $1; exit}')
-    if [ -n "$LINE" ]; then
-      iptables -I INPUT "$LINE" -p tcp --dport "$PORT" -m state --state NEW -j ACCEPT
-    else
-      iptables -A INPUT -p tcp --dport "$PORT" -m state --state NEW -j ACCEPT
-    fi
-  fi
-done
-if command -v netfilter-persistent >/dev/null 2>&1; then netfilter-persistent save >/dev/null 2>&1 || true; fi
-else
-  echo "  iptables 없음 (클라우드 콘솔 방화벽에서 80, 443 을 열어 주세요)"
-fi
+# 방화벽(80, 443 열기)은 구글 클라우드 콘솔에서 설정합니다 (README-google.md)
 
 # ---------------------------------------------------------------------
-say "7/7" "서비스 시작"
+say "6/6" "서비스 시작"
 systemctl daemon-reload
 systemctl enable church caddy >/dev/null 2>&1
 systemctl restart church

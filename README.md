@@ -43,7 +43,7 @@
 
 **성도 화면** (`/c/{교회코드}`, 로그인 없음, 모바일 맞춤) — 소식, 주보(인쇄 가능), 행사, 악보, 교회 앨범, 익명 기도제목, 요청·제보(악보 요청·오류 제보, 관리자 답변)
 
-**전체 관리자** (`/platform`) — 교회 등록, 교회별 설치 코드, 공통 예배 PPT 양식, **공용 찬송가 보관함**(올리기·지우기, .ppt 수백 개 한 번에), 모든 교회의 요청·제보 답변
+**전체 관리자** (`/platform`) — 교회 등록, 공통 예배 PPT 양식, **공용 찬송가 보관함**(올리기·지우기, .ppt 수백 개 한 번에), 모든 교회의 요청·제보 답변
 
 ### 데모
 
@@ -178,11 +178,11 @@ npm run dev      # Spring(8080) + React(5173) → http://localhost:5173
 
 - `JAVA_HOME` 이 Java 8 이어도 PATH 의 Java 17 을 찾아 씀 (`scripts/run-api.mjs`)
 - 서버 하나로 실행: `npm run build` → `npm start` (http://localhost:8080, 화면 + API)
-- 환경변수: `PORT`, `DATA_DIR`, `BACKUP_DIR`, `COOKIE_SECURE=1`(HTTPS), `SETUP_TOKEN`(첫 관리자 계정 설치 코드), `DEFAULT_CHURCH`
+- 환경변수: `PORT`, `DATA_DIR`, `BACKUP_DIR`, `COOKIE_SECURE=1`(HTTPS), `DEFAULT_CHURCH`
 
 ## 배포·운영
 
-- 서버 준비: [deploy/README-google.md](deploy/README-google.md) (Google Cloud), [deploy/README.md](deploy/README.md) (Oracle Cloud)
+- 서버 준비: [deploy/README-google.md](deploy/README-google.md) (Google Cloud)
 - 배포: `npm run deploy` — 빌드 → 업로드 → `setup.sh`(Java·Caddy 설치, systemd 서비스, 스왑, 권한, HTTPS 설정). 여러 번 실행해도 안전, 데이터·백업은 건드리지 않음
 - 백업: 하루 한 번 자동(최근 30개), 관리자 화면에서 수동 백업·다운로드·복원(복원 직전 상태 자동 보관). 서버 밖 보관은 관리자가 내려받기(30일 지나면 알림)
 - 비용: Google Cloud 항상 무료 범위(e2-micro, 표준 디스크 30GB, 임시 외부 IP) + 예산 알림

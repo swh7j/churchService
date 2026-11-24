@@ -105,7 +105,7 @@ Get-Content $HOME\.ssh\church-gcp.pub
 
 ## 5. 내 PC에서 올리기
 
-`D:\testProject` 폴더에서 터미널을 열고:
+프로젝트 폴더에서 터미널을 열고:
 
 ```bash
 npm run deploy

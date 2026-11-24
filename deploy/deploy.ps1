@@ -1,7 +1,7 @@
 ﻿# =====================================================================
-#  교회 관리 시스템 - 클라우드 서버(구글/오라클 등)에 올리기 (처음 설치 + 업데이트 공용)
+#  교회 관리 시스템 - 구글 클라우드 서버에 올리기 (처음 설치 + 업데이트 공용)
 #
-#  사용법 (D:\testProject 에서):  npm run deploy
+#  사용법 (프로젝트 폴더에서):  npm run deploy
 #  처음 한 번만 서버 IP와 SSH 키 파일 위치를 물어보고 deploy\server.local.json 에 저장합니다.
 #  (이 파일과 키 파일은 git 에 올라가지 않습니다)
 # =====================================================================
@@ -19,8 +19,8 @@ if (Test-Path $configFile) {
     Write-Host '처음 실행이네요. 서버 정보를 입력해 주세요.' -ForegroundColor Yellow
     $ip = (Read-Host '서버 외부(공용) IP (예: 34.82.11.22)').Trim()
     $key = (Read-Host 'SSH 개인 키 파일 경로 (예: C:\Users\me\.ssh\church-gcp)').Trim('"', ' ')
-    $userIn = (Read-Host '서버 사용자 이름 (구글: deploy / 오라클: 그냥 Enter = ubuntu)').Trim()
-    if (-not $userIn) { $userIn = 'ubuntu' }
+    $userIn = (Read-Host '서버 사용자 이름 (그냥 Enter = deploy)').Trim()
+    if (-not $userIn) { $userIn = 'deploy' }
     $domainIn = (Read-Host '도메인 (그냥 Enter 를 누르면 무료 주소 사용)').Trim()
     if (-not $domainIn) { $domainIn = ($ip -replace '\.', '-') + '.sslip.io' }
     $cfg = [pscustomobject]@{ ip = $ip; key = $key; user = $userIn; domain = $domainIn }
