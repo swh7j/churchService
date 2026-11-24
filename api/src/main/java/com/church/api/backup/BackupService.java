@@ -26,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.sqlite.SQLiteConfig;
 
 import com.church.api.church.PhotoStore;
+import com.church.api.church.SongLibrary;
 import com.church.api.common.Api;
 import com.church.api.common.ApiException;
 import com.church.api.tenant.ChurchContext;
@@ -52,11 +53,13 @@ public class BackupService {
 	private final Path root;
 	private final ChurchRegistry churches;
 	private final PhotoStore photos;
+	private final SongLibrary library;
 
-	public BackupService(JdbcTemplate jdbc, ChurchRegistry churches, PhotoStore photos, @Value("${app.backup-dir}") String backupDir) {
+	public BackupService(JdbcTemplate jdbc, ChurchRegistry churches, PhotoStore photos, SongLibrary library, @Value("${app.backup-dir}") String backupDir) {
 		this.jdbc = jdbc;
 		this.churches = churches;
 		this.photos = photos;
+		this.library = library;
 		this.root = Path.of(backupDir).toAbsolutePath().normalize();
 	}
 
@@ -151,6 +154,7 @@ public class BackupService {
 		for (Church c : churches.all()) {
 			if (c.active()) ChurchContext.run(c.code(), this::autoBackupCurrent);
 		}
+		library.backup(); // 공용 찬송가 보관함: 새 파일만 복사 (교회와 상관없이 한 번)
 	}
 
 	private void autoBackupCurrent() {

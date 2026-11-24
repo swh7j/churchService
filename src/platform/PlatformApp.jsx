@@ -1,10 +1,11 @@
-// 전체 관리자 페이지 (/platform): 교회 등록·관리, 예배 PPT 공통 양식, 전체 관리자 계정
+// 전체 관리자 페이지 (/platform): 교회 등록·관리, 예배 PPT 공통 양식, 공용 찬송가 보관함, 전체 관리자 계정
 // 교회 관리자 계정과 로그인이 따로입니다.
 import { useCallback, useEffect, useState } from 'react';
 import { BrowserRouter, NavLink, Route, Routes } from 'react-router-dom';
 import { api } from '../api';
 import { Badge, Card, Form, Loading, Modal, PageHeader, useList } from '../components';
 import Churches from './Churches';
+import Hymns from '../pages/Hymns';
 
 // 첫 계정을 만들 때만 운영 교회 로그인 정보를 같이 보냄
 async function withChurch(method, url, church, body) {
@@ -240,6 +241,7 @@ function Main({ user, onLogout }) {
           <div className="nav-group">
             <NavLink to="/" end>교회 목록</NavLink>
             <NavLink to="/common-ppt">예배 PPT 공통 양식</NavLink>
+            <NavLink to="/library">찬송가 보관함</NavLink>
             <NavLink to="/accounts">전체 관리자 계정</NavLink>
           </div>
         </nav>
@@ -258,6 +260,7 @@ function Main({ user, onLogout }) {
         <Routes>
           <Route path="/" element={<Churches />} />
           <Route path="/common-ppt" element={<CommonPpt />} />
+          <Route path="/library" element={<Hymns manage />} />
           <Route path="/accounts" element={<Accounts me={user} />} />
           <Route path="*" element={<p className="empty">없는 페이지입니다.</p>} />
         </Routes>
