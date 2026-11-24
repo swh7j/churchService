@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { api } from '../api';
 import { withChurch } from '../church';
 import { Card, confirmDelete, Loading, Modal, PageHeader } from '../components';
-import { imagesFromFiles, packImages, unpackImages } from './bulletin/pptx';
+import { fitImage, imagesFromFiles, packImages, unpackImages } from './bulletin/pptx';
 
 export const KINDS = {
   hymn: { label: '찬송가', unit: '장', byNo: true },
@@ -145,12 +145,21 @@ export default function Hymns({ manage = false }) {
           r = await res.json().catch(() => null);
           if (!res.ok) throw new Error(r?.error || '저장하지 못했습니다.');
         } else {
-          const { images, skipped, textSlides, layered } = await imagesFromFiles(g.files);
+          const got = await imagesFromFiles(g.files);
+          const { skipped, textSlides, layered } = got;
+          // 큰 그림(휴대폰 사진 등)은 긴 쪽 1920px 로 줄여서 올림 — 한 장씩 차례로 (메모리 아끼기)
+          const images = [];
+          let shrunk = 0;
+          for (const im of got.images) {
+            const f = await fitImage(im);
+            if (f.shrunk) shrunk++;
+            images.push(f);
+          }
           if (!images.length) throw new Error(`그림을 찾지 못했습니다. 글자로 된 PPT입니다. ${TO_JPEG}`);
           const res = await fetch(`/api/platform/library/${kind}?${params}`, { method: 'PUT', headers: { 'Content-Type': 'application/octet-stream' }, body: await packImages(images) });
           r = await res.json().catch(() => null);
           if (!res.ok) throw new Error(r?.error || '저장하지 못했습니다.');
-          Object.assign(r, { skipped, textSlides, layered });
+          Object.assign(r, { skipped, textSlides, layered, shrunk });
         }
         // 저장은 됐지만 글자(가사)나 겹친 그림이 빠졌을 수 있으면 경고로 표시
         const lost = [r.textSlides ? `글자(가사 등)가 있는 화면 ${r.textSlides}개` : '', r.layered ? `그림이 겹친 화면 ${r.layered}개` : ''].filter(Boolean);
@@ -159,6 +168,7 @@ export default function Hymns({ manage = false }) {
           msg:
             `${r.count}화면 저장` +
             (r.skipped ? ` (그림 없는 화면 ${r.skipped}개 뺌)` : '') +
+            (r.shrunk ? ` · 큰 그림 ${r.shrunk}장 줄임` : '') +
             (g.renamed ? ' · 이름과 실제 형식이 달라 맞춰서 처리' : '') +
             (g.dups.length ? ` · 같은 곡 파일 ${g.dups.join(', ')} 은 건너뜀` : '') +
             (lost.length ? ` ⚠ ${lost.join(', ')} — 내용이 빠졌을 수 있습니다. 미리보기로 확인하고, 빠졌으면 ${TO_JPEG}` : ''),
@@ -209,7 +219,7 @@ export default function Hymns({ manage = false }) {
               <>파일 이름의 <strong>곡 제목</strong>으로 저장합니다. 예) <code>002_내입술로.ppt</code>, <code>그날.ppt</code> → 주보에 '내 입술로'라고 쓰면 찾아서 넣음 (띄어쓰기 상관없음)</>
             )}
             <br />
-            옛날 파워포인트(.ppt), .pptx, 그림(jpg·png) 모두 됩니다. 그림 여러 장은 이름 끝에 <code>-1</code>, <code>-2</code>… 를 붙여 주세요.
+            옛날 파워포인트(.ppt), .pptx, 그림(jpg·png) 모두 됩니다. 큰 그림은 긴 쪽 1920px 로 자동으로 줄여서 올립니다. 그림 여러 장은 이름 끝에 <code>-1</code>, <code>-2</code>… 를 붙여 주세요.
           </p>
           <div className="hymn-upload">
             <label className={'btn primary' + (busy ? ' disabled' : '')}>

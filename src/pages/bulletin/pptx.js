@@ -374,6 +374,45 @@ export async function imagesFromFiles(files) {
   return { images, skipped, textSlides, layered };
 }
 
+/** 예배 화면(풀HD)에 충분한 크기: 긴 쪽 1920px */
+export const MAX_SIDE = 1920;
+const MAX_JPG_BYTES = 1_500_000;
+
+/**
+ * 큰 그림 줄이기 (휴대폰 사진 4000px·3~5MB 등). 이미 작으면 그대로 둠 (다시 저장하면 화질만 떨어지므로).
+ * jpg 는 jpg(품질 86%)로, png 는 투명한 부분을 지키려고 png 로 다시 저장. 돌려줌: { data, ext, shrunk }
+ */
+export async function fitImage(img, maxSide = MAX_SIDE) {
+  let bmp;
+  try {
+    bmp = await createImageBitmap(new Blob([img.data]));
+  } catch {
+    return img;
+  }
+  const long = Math.max(bmp.width, bmp.height);
+  const tooBig = long > maxSide || (img.ext === 'jpg' && img.data.length > MAX_JPG_BYTES);
+  if (!tooBig) {
+    bmp.close?.();
+    return img;
+  }
+  const scale = Math.min(1, maxSide / long);
+  const c = document.createElement('canvas');
+  c.width = Math.round(bmp.width * scale);
+  c.height = Math.round(bmp.height * scale);
+  const ctx = c.getContext('2d');
+  ctx.imageSmoothingQuality = 'high';
+  if (img.ext === 'jpg') {
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, c.width, c.height);
+  }
+  ctx.drawImage(bmp, 0, 0, c.width, c.height);
+  bmp.close?.();
+  const blob = await new Promise((r) => (img.ext === 'png' ? c.toBlob(r, 'image/png') : c.toBlob(r, 'image/jpeg', 0.86)));
+  const data = new Uint8Array(await blob.arrayBuffer());
+  // 줄였는데 오히려 커지면(드묾) 원래 것을 씀
+  return data.length < img.data.length ? { data, ext: img.ext, shrunk: true } : img;
+}
+
 /** 그림 목록 → 서버에 저장하는 zip (001.jpg, 002.png …) */
 export async function packImages(images) {
   const { default: JSZip } = await import('jszip');
