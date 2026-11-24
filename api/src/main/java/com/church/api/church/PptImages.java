@@ -9,6 +9,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
@@ -19,6 +20,12 @@ import javax.imageio.ImageWriteParam;
 import javax.imageio.ImageWriter;
 import javax.imageio.stream.ImageOutputStream;
 
+import org.apache.poi.ddf.EscherBSERecord;
+import org.apache.poi.ddf.EscherContainerRecord;
+import org.apache.poi.ddf.EscherOptRecord;
+import org.apache.poi.ddf.EscherPropertyTypes;
+import org.apache.poi.ddf.EscherRecord;
+import org.apache.poi.ddf.EscherSimpleProperty;
 import org.apache.poi.hslf.usermodel.HSLFBackground;
 import org.apache.poi.hslf.usermodel.HSLFFill;
 import org.apache.poi.hslf.usermodel.HSLFGroupShape;
@@ -63,8 +70,9 @@ public final class PptImages {
 			java.awt.Dimension size = show.getPageSize();
 			double scale = (double) HEIGHT / size.height;
 			int w = (int) Math.round(size.width * scale);
+			Pictures pics = new Pictures(show);
 			for (HSLFSlide slide : show.getSlides()) {
-				byte[] jpg = render(slide, w, HEIGHT, scale);
+				byte[] jpg = render(pics, slide, w, HEIGHT, scale);
 				if (jpg == null) skipped++;
 				else images.add(jpg);
 			}
@@ -90,7 +98,7 @@ public final class PptImages {
 	}
 
 	/** 슬라이드 한 장 → JPEG (그림이 하나도 없으면 null) */
-	private static byte[] render(HSLFSlide slide, int w, int h, double scale) throws IOException {
+	private static byte[] render(Pictures pics, HSLFSlide slide, int w, int h, double scale) throws IOException {
 		BufferedImage canvas = new BufferedImage(w, h, BufferedImage.TYPE_INT_RGB);
 		Graphics2D g = canvas.createGraphics();
 		g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
@@ -102,12 +110,12 @@ public final class PptImages {
 		try {
 			// 1) 배경: 슬라이드 자체 배경, 없으면 마스터 배경
 			HSLFSheet bgSheet = slide.getFollowMasterBackground() && slide.getMasterSheet() != null ? slide.getMasterSheet() : slide;
-			drawn += background(g, bgSheet.getBackground(), w, h);
+			drawn += background(pics, g, bgSheet.getBackground(), w, h);
 			// 2) 마스터에 놓인 그림 (로고·배경 그림 등)
 			HSLFMasterSheet master = slide.getMasterSheet();
-			if (master != null && slide.getFollowMasterObjects()) drawn += pictures(g, master.getShapes(), scale, null, null);
+			if (master != null && slide.getFollowMasterObjects()) drawn += pictures(pics, g, master.getShapes(), scale, null, null);
 			// 3) 슬라이드의 그림들 (위에 얹힌 악보·가사)
-			drawn += pictures(g, slide.getShapes(), scale, null, null);
+			drawn += pictures(pics, g, slide.getShapes(), scale, null, null);
 		} finally {
 			g.dispose();
 		}
@@ -115,13 +123,15 @@ public final class PptImages {
 		return jpeg(canvas, 0.86f);
 	}
 
-	private static int background(Graphics2D g, HSLFBackground bg, int w, int h) {
+	private static int background(Pictures pics, Graphics2D g, HSLFBackground bg, int w, int h) {
 		if (bg == null) return 0;
 		HSLFFill fill = bg.getFill();
 		if (fill == null) return 0;
 		int type = fill.getFillType();
 		if (type == FILL_PICTURE || type == FILL_TEXTURE || type == FILL_PATTERN) {
-			BufferedImage img = image(fill.getPictureData());
+			HSLFPictureData data = fill.getPictureData();
+			if (data == null) data = pics.byIndex(blipIndex(bg));
+			BufferedImage img = image(data);
 			if (img != null) {
 				if (type == FILL_PICTURE) {
 					g.drawImage(img, 0, 0, w, h, null);
@@ -143,14 +153,16 @@ public final class PptImages {
 	 * 그림 도형들을 제자리에 그림. 묶음 도형은 안쪽 좌표를 바깥 좌표로 바꿔서.
 	 * group/interior: 묶음 안이면 (바깥 자리, 안쪽 좌표계)
 	 */
-	private static int pictures(Graphics2D g, List<HSLFShape> shapes, double scale, Rectangle2D group, Rectangle2D interior) {
+	private static int pictures(Pictures pics, Graphics2D g, List<HSLFShape> shapes, double scale, Rectangle2D group, Rectangle2D interior) {
 		int n = 0;
 		for (HSLFShape s : shapes) {
 			if (s instanceof HSLFGroupShape gs) {
 				Rectangle2D outer = map(gs.getAnchor(), group, interior);
-				n += pictures(g, gs.getShapes(), scale, outer, gs.getInteriorAnchor());
+				n += pictures(pics, g, gs.getShapes(), scale, outer, gs.getInteriorAnchor());
 			} else if (s instanceof HSLFPictureShape p) {
-				BufferedImage img = image(p.getPictureData());
+				HSLFPictureData data = p.getPictureData();
+				if (data == null) data = pics.byIndex(p.getPictureIndex());
+				BufferedImage img = image(data);
 				if (img == null) continue;
 				Rectangle2D a = map(p.getAnchor(), group, interior);
 				g.drawImage(img, (int) Math.round(a.getX() * scale), (int) Math.round(a.getY() * scale),
@@ -159,6 +171,43 @@ public final class PptImages {
 			}
 		}
 		return n;
+	}
+
+	/**
+	 * 그림 번호(BSE 번호) → 그림 데이터. 중간에 지워진 빈 칸이 있는 PPT는 라이브러리가 그림을 엉뚱한 칸에 연결해
+	 * '그림 없음'이 되므로, 그림마다 붙은 고유값(UID)으로 직접 찾음. 못 찾으면 파일 안 위치(offset)로 찾음.
+	 */
+	private static final class Pictures {
+		private final List<EscherBSERecord> bses = new ArrayList<>();
+		private final List<HSLFPictureData> data;
+
+		Pictures(HSLFSlideShow show) {
+			data = show.getPictureData();
+			try {
+				EscherContainerRecord bstore = show.getDocumentRecord().getPPDrawingGroup().getDggContainer()
+						.getChildById(EscherContainerRecord.BSTORE_CONTAINER);
+				if (bstore != null) for (EscherRecord r : bstore.getChildRecords()) if (r instanceof EscherBSERecord b) bses.add(b);
+			} catch (RuntimeException ignored) {
+				// 그림 목록을 못 읽으면 라이브러리가 찾은 것만 씀
+			}
+		}
+
+		HSLFPictureData byIndex(int index) {
+			if (index < 1 || index > bses.size()) return null;
+			EscherBSERecord b = bses.get(index - 1);
+			if (b.getSize() == 0) return null;
+			for (HSLFPictureData d : data) if (Arrays.equals(d.getUID(), b.getUid())) return d;
+			for (HSLFPictureData d : data) if (d.getOffset() == b.getOffset()) return d;
+			return null;
+		}
+	}
+
+	/** 배경 채우기에 쓴 그림 번호 (fillBlip 속성, 0x186 — POI 에서는 FILL__PATTERNTEXTURE 라는 이름) */
+	private static int blipIndex(HSLFBackground bg) {
+		EscherOptRecord opt = bg.getEscherChild(EscherOptRecord.RECORD_ID);
+		if (opt == null) return 0;
+		EscherSimpleProperty p = opt.lookup(EscherPropertyTypes.FILL__PATTERNTEXTURE);
+		return p == null ? 0 : p.getPropertyValue();
 	}
 
 	/** 묶음 안쪽 좌표 → 슬라이드 좌표 */
