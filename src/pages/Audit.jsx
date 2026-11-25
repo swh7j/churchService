@@ -2,13 +2,8 @@ import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { Badge, Card, Modal, PageHeader } from '../components';
 import { downloadCSV, today } from '../utils';
+import { actionTone, targetLabel } from './auditLabels';
 
-const TARGET = {
-  members: '교인', offerings: '헌금', transactions: '회계 장부', categories: '계정과목', offering_types: '헌금 종류',
-  services: '예배 종류', small_groups: '소모임', group_transactions: '소모임 장부', news: '교회 소식', bulletins: '주보',
-  events: '행사', attendance: '출석', users: '사용자', backups: '백업', settings: '설정', auth: '로그인',
-};
-const TONE = { 삭제: 'red', 복원: 'red', '계정 삭제': 'red', 수정: 'amber', 등록: 'green' };
 const SIZE = 30;
 
 /** 내용이 JSON 이면 보기 좋게 줄 바꿈 */
@@ -59,7 +54,7 @@ export default function Audit() {
     try {
       const rows = await api.get('/audit', { q, limit: 2000 });
       downloadCSV(`활동기록_${today()}.csv`, ['시각', '사용자', '작업', '대상', '번호', '내용'],
-        rows.map((r) => [r.at, r.user_name, r.action, TARGET[r.target] || r.target, r.target_id, r.detail]));
+        rows.map((r) => [r.at, r.user_name, r.action, targetLabel(r.target), r.target_id, r.detail]));
     } catch (e) {
       alert(e.message);
     }
@@ -88,8 +83,8 @@ export default function Audit() {
                 <tr key={r.id} className="clickable" onClick={() => setOpen(r)}>
                   <td className="nowrap muted">{r.at}</td>
                   <td className="nowrap">{r.user_name || '-'}</td>
-                  <td><Badge tone={TONE[r.action]}>{r.action}</Badge></td>
-                  <td className="nowrap">{TARGET[r.target] || r.target}{r.target_id && <span className="muted small"> #{r.target_id}</span>}</td>
+                  <td><Badge tone={actionTone(r.action)}>{r.action}</Badge></td>
+                  <td className="nowrap">{targetLabel(r.target)}{r.target_id && <span className="muted small"> #{r.target_id}</span>}</td>
                   <td className="detail"><div className="clamp">{r.detail}</div></td>
                 </tr>
               ))}
@@ -114,8 +109,8 @@ export default function Audit() {
           <dl className="audit-detail">
             <dt>시각</dt><dd>{open.at}</dd>
             <dt>사용자</dt><dd>{open.user_name || '-'}</dd>
-            <dt>작업</dt><dd><Badge tone={TONE[open.action]}>{open.action}</Badge></dd>
-            <dt>대상</dt><dd>{TARGET[open.target] || open.target}{open.target_id && ` #${open.target_id}`}</dd>
+            <dt>작업</dt><dd><Badge tone={actionTone(open.action)}>{open.action}</Badge></dd>
+            <dt>대상</dt><dd>{targetLabel(open.target)}{open.target_id && ` #${open.target_id}`}</dd>
           </dl>
           <pre className="audit-pre">{pretty(open.detail) || '(내용 없음)'}</pre>
         </Modal>

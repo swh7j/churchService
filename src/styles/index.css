@@ -1,0 +1,11 @@
+/*
+ * 전체 화면 스타일. 뒤에 오는 규칙이 앞의 것을 덮으므로 아래 순서를 바꾸지 말 것
+ * (예: responsive.css 의 모바일 규칙이 admin.css 의 기본 모양을 덮음)
+ * 주보 인쇄는 pages/bulletin/bulletin.css, 기도·요청 게시판은 public/prayer.css 에 따로 있음
+ */
+@import './base.css';
+@import './admin.css';
+@import './responsive.css';
+@import './public.css';
+@import './features.css';
+@import './features2.css';

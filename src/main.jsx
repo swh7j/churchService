@@ -6,7 +6,7 @@ import PlatformApp from './platform/PlatformApp';
 import ChurchSelect from './public/ChurchSelect';
 import PublicApp from './public/PublicApp';
 import { setupPwa } from './pwa';
-import './styles.css';
+import './styles/index.css';
 
 // 주소: /c/{교회코드} → 성도 화면, /c/{교회코드}/admin → 관리자 화면, /platform → 전체 관리자, 그 외 → 교회 선택
 const isAdmin = REST === '/admin' || REST.startsWith('/admin/');

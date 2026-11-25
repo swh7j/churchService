@@ -43,6 +43,9 @@ class AuditPageTest extends IntegrationTest {
 		assertThat(a.get("/api/audit/page?q=" + enc("없는검색어zz")).ok().json().path("total").asInt()).isZero();
 		assertThat(a.get("/api/audit?q=" + enc("페이징시험")).ok().json().size()).isEqualTo(35); // 엑셀용 목록은 그대로
 		assertThat(client().get("/api/audit/page").status()).isEqualTo(401);
+		Client staff = userWithRole("auditstaff", "staff"); // 관리자만 볼 수 있음
+		assertThat(staff.get("/api/audit/page").status()).isEqualTo(403);
+		assertThat(staff.get("/api/audit").status()).isEqualTo(403);
 	}
 
 	private static String enc(String s) {

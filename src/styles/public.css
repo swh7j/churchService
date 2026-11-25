@@ -1,0 +1,72 @@
+/* 성도 화면 */
+
+/* ---------- 성도 화면 ---------- */
+.pub { min-height: 100vh; display: flex; flex-direction: column; background: #f6f4ef; }
+.pub-head { background: var(--side); color: #fff; padding: 14px 16px; }
+.pub-brand { display: inline-flex; align-items: center; gap: 10px; color: #fff; text-decoration: none; font-weight: 800; font-size: 18px; max-width: 760px; }
+.pub-brand .brand-mark { width: 30px; height: 30px; font-size: 16px; }
+.pub-head, .pub-nav { padding-left: max(16px, calc((100% - 760px) / 2)); padding-right: max(16px, calc((100% - 760px) / 2)); }
+.pub-nav { display: flex; gap: 4px; background: #fff; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; overflow-x: auto; }
+.pub-nav a { padding: 12px 12px; color: var(--muted); text-decoration: none; font-weight: 600; border-bottom: 2px solid transparent; white-space: nowrap; }
+.pub-nav a.active { color: var(--side); border-bottom-color: var(--side); }
+.pub-main { flex: 1; width: 100%; max-width: 760px; margin: 0 auto; padding: 16px 16px 40px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; align-content: start; }
+.pub-events .pub-date { white-space: normal; }
+.event-info { min-width: 0; }
+.pub-foot { display: flex; justify-content: space-between; gap: 12px; padding: 16px; border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; background: #fff; }
+.pub-foot { padding-left: max(16px, calc((100% - 760px) / 2)); padding-right: max(16px, calc((100% - 760px) / 2)); }
+.pub-foot a { color: var(--muted); }
+
+.pub-hero { background: linear-gradient(150deg, #1b2440, #33467a); color: #fff; border-radius: 14px; padding: 22px 20px; }
+.pub-hero-label { font-size: 12px; opacity: 0.7; letter-spacing: 0.05em; }
+.pub-hero-date { font-size: 13px; opacity: 0.85; margin-top: 6px; }
+.pub-hero h1 { font-size: 22px; margin: 6px 0 4px; font-family: 'Batang', 'Nanum Myeongjo', serif; }
+.pub-hero-sub { font-size: 14px; opacity: 0.9; }
+.pub-hero p { margin: 8px 0 0; opacity: 0.85; }
+.pub-btn { display: inline-block; margin-top: 14px; background: #fff; color: var(--side); border: 0; border-radius: 999px; padding: 8px 18px; font-weight: 700; text-decoration: none; cursor: pointer; font-size: 14px; }
+.pub-btn.small { margin: 0; padding: 6px 14px; background: var(--side); color: #fff; font-size: 13px; }
+
+.pub-card { background: #fff; border-radius: 14px; padding: 16px; border: 1px solid #ebe7de; }
+.pub-card-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 6px; }
+.pub-card-head h2, .pub-title { font-size: 17px; }
+.pub-title { margin-bottom: 10px; }
+.pub-card-head a { font-size: 13px; color: var(--muted); text-decoration: none; }
+.pub-empty { color: var(--muted); text-align: center; padding: 20px 8px; margin: 0; }
+.pub-date { color: var(--muted); font-size: 12px; white-space: nowrap; }
+.tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--gray-soft); color: #4b5262; margin-right: 6px; vertical-align: 1px; }
+.tag.red { background: var(--red-soft); color: var(--red); }
+.tag.blue { background: var(--blue-soft); color: var(--primary); }
+.tag.green { background: var(--green-soft); color: var(--green); }
+
+.pub-news { list-style: none; margin: 0; padding: 0; }
+.pub-news li { border-bottom: 1px solid #f0ede6; }
+.pub-news li:last-child { border-bottom: 0; }
+.pub-news button { width: 100%; display: flex; justify-content: space-between; gap: 10px; align-items: baseline; background: none; border: 0; padding: 12px 2px; text-align: left; cursor: pointer; font-size: 15px; }
+.pub-news-title { font-weight: 600; }
+.pub-news-body { white-space: pre-wrap; margin: 0 2px 14px; color: #3c4352; line-height: 1.7; background: #faf9f6; border-radius: 8px; padding: 12px; }
+.pub-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+.pub-chips button { border: 1px solid var(--border); background: #fff; border-radius: 999px; padding: 5px 12px; cursor: pointer; font-size: 13px; }
+.pub-chips button.on { background: var(--side); border-color: var(--side); color: #fff; font-weight: 600; }
+
+.pub-list { list-style: none; margin: 0; padding: 0; }
+.pub-list a { display: flex; justify-content: space-between; gap: 12px; align-items: center; padding: 12px 2px; border-bottom: 1px solid #f0ede6; color: inherit; text-decoration: none; }
+.pub-list li:last-child a { border-bottom: 0; }
+.pub-list-main { display: grid; gap: 2px; }
+.pub-list-main span { color: #3c4352; }
+.pub-toolbar { display: flex; justify-content: space-between; align-items: center; }
+.pub-toolbar a { color: var(--muted); text-decoration: none; font-size: 14px; }
+
+.pub-events { list-style: none; margin: 0; padding: 0; }
+.pub-events li { display: flex; gap: 14px; padding: 12px 0; border-bottom: 1px solid #f0ede6; }
+.pub-events li:last-child { border-bottom: 0; }
+.pub-event-desc { font-size: 13px; color: #3c4352; margin-top: 4px; white-space: pre-wrap; }
+.pub-more { width: 100%; margin-top: 10px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 9px; cursor: pointer; color: var(--muted); font-weight: 600; }
+
+@media print {
+  .pub-head, .pub-foot { display: none; }
+  .pub { background: #fff; }
+}
+
+/* 성도 화면: 이번 달 생일 */
+.pub-birthdays { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+.pub-birthdays li { display: flex; gap: 10px; align-items: center; background: #fbf7ee; border-radius: 10px; padding: 10px 12px; }
+.pub-bday-date { font-weight: 800; color: #a0652a; font-variant-numeric: tabular-nums; min-width: 38px; }

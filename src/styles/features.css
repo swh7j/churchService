@@ -1,0 +1,96 @@
+/* 기능별: 악보·확인 창·예배 PPT·교회 선택·앨범 */
+
+/* ---------- 악보 ---------- */
+.sheet-layout { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+.sheet-pages { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin-top: 16px; }
+.sheet-page { border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: #fff; }
+.sheet-thumb { height: 150px; display: grid; place-items: center; background: #f6f7f9; overflow: hidden; }
+.sheet-thumb img { max-width: 100%; max-height: 100%; object-fit: contain; transition: transform .15s; }
+.sheet-page-bar { display: flex; align-items: center; gap: 4px; padding: 6px; }
+.sheet-page-bar strong { margin-right: auto; font-size: 13px; }
+.sheet-page-bar .btn.sm { padding: 2px 7px; }
+.sheet-add { display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 4px; min-height: 150px; border: 2px dashed #cfd5df; border-radius: 8px; cursor: pointer; font-weight: 600; text-align: center; padding: 8px; }
+.sheet-add:hover { border-color: var(--primary); }
+.sheet-preview { margin-top: 16px; display: grid; gap: 6px; }
+.sheet-preview img { width: 100%; max-height: 60vh; object-fit: contain; object-position: top; background: #f6f7f9; border: 1px solid #e5e7eb; border-radius: 6px; }
+.sheet-full { display: block; width: 100%; height: auto; margin-top: 10px; }
+.sheet-card { padding: 12px; }
+@media print { .sheet-full { margin: 0; } }
+/* 성도 화면 도구 줄: 버튼 여러 개 (주보 인쇄) */
+.pub-toolbar-actions { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.pub-print-tip { font-size: 12px; color: var(--muted); margin: 6px 0 0; text-align: right; }
+.pub-flip { font-size: 13px; color: var(--muted); display: inline-flex; align-items: center; gap: 4px; cursor: pointer; }
+
+/* 화면 안 확인 창 */
+.confirm-backdrop { z-index: 100; place-items: center; }
+.confirm-box { max-width: 400px; }
+.confirm-msg { white-space: pre-line; margin: 0; line-height: 1.6; }
+.confirm-box .form-actions { margin-top: 18px; }
+
+/* 예배 PPT 만들기 */
+.wppt-tpl { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; margin-bottom: 12px; background: #f6f7fb; border-radius: 8px; }
+.wppt-bg { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 10px 0; padding: 10px 12px; border: 1px solid #e3e6ee; border-radius: 8px; }
+.wppt-bg img { height: 54px; width: auto; border-radius: 4px; border: 1px solid #e3e6ee; }
+.wppt-bg p { flex-basis: 100%; margin: 0; }
+.wppt-empty input, .wppt-empty textarea { border-color: #e0736b; background: #fff7f6; }
+.wppt-empty-tag { color: #c0392b; font-weight: 600; font-size: 12px; }
+.wppt-ins { margin: 14px 0 4px; padding: 10px 12px; border: 1px solid #e3e6ee; border-radius: 8px; }
+.wppt-ins p { margin: 4px 0 8px; }
+.wppt-ins ul { list-style: none; margin: 0; padding: 0; }
+.wppt-ins li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 6px 0; border-top: 1px solid #f0f1f5; }
+.wppt-ins-name { display: flex; align-items: center; gap: 6px; flex: 1 1 220px; font-size: 14px; }
+.wppt-help { margin-top: 14px; }
+.wppt-help summary { cursor: pointer; font-weight: 600; font-size: 13px; }
+.wppt-help code { background: #eef0f5; padding: 0 4px; border-radius: 4px; }
+
+/* 교회 선택 / 교회 관리 */
+.church-select .search { width: 100%; margin-bottom: 10px; }
+.church-list { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 8px; text-align: left; }
+.church-list li { display: flex; align-items: center; gap: 10px; }
+.church-item { flex: 1; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px 14px; border: 1px solid #dfe3ec; border-radius: 10px; background: #fff; cursor: pointer; text-align: left; }
+.church-item:hover { border-color: #2f5bd3; background: #f5f8ff; }
+.church-guide { white-space: pre-wrap; background: #f6f7fb; padding: 12px; border-radius: 8px; font-size: 13px; }
+
+/* ---------- 교회 앨범 (관리자) ---------- */
+.album-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+.album-card { display: flex; flex-direction: column; text-align: left; padding: 0; border: 1px solid var(--border); border-radius: var(--radius); background: #fff; overflow: hidden; cursor: pointer; font: inherit; color: inherit; }
+.album-card:hover { border-color: var(--primary); }
+.album-cover { display: block; aspect-ratio: 4 / 3; background: #f1f3f6; }
+.album-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.album-empty { display: grid; place-items: center; height: 100%; color: var(--muted); font-size: 13px; }
+.album-meta { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px 10px; }
+.album-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+.album-actions { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.album-actions label.btn { cursor: pointer; }
+.album-actions .btn.disabled { opacity: 0.55; pointer-events: none; }
+.album-progress { background: #f5f7fb; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; font-size: 14px; }
+.album-progress .bar { display: block; height: 6px; background: #e3e7ef; border-radius: 3px; margin-top: 6px; overflow: hidden; }
+.album-progress .bar span { display: block; height: 100%; background: var(--primary); transition: width .2s; }
+.album-failed { margin: 8px 0 0; padding-left: 18px; color: #b3261e; font-size: 13px; }
+.photo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; margin-bottom: 10px; }
+.photo-cell { position: relative; aspect-ratio: 1; border-radius: 6px; overflow: hidden; background: #f1f3f6; }
+.photo-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photo-cover-tag { position: absolute; left: 6px; top: 6px; background: rgba(27, 36, 64, .85); color: #fff; font-size: 11px; padding: 2px 6px; border-radius: 4px; }
+.photo-tools { position: absolute; right: 4px; top: 4px; display: flex; gap: 3px; }
+.photo-tools .btn.sm { padding: 1px 7px; background: rgba(255, 255, 255, .92); }
+
+/* ---------- 교회 앨범 (성도 화면) ---------- */
+.pub-chips .pub-chip-link { border: 1px solid #e2c98f; background: #fdf7ea; border-radius: 999px; padding: 5px 12px; font-size: 13px; color: #7a5a14; text-decoration: none; font-weight: 600; }
+.pub-albums { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+.pub-album { display: flex; flex-direction: column; gap: 2px; text-decoration: none; color: inherit; }
+.pub-album-cover { display: block; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; background: #f1f3f6; margin-bottom: 4px; }
+.pub-album-cover img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pub-album-title { font-weight: 700; font-size: 14px; line-height: 1.35; }
+.pub-album-desc { white-space: pre-line; margin: 8px 0 0; font-size: 14px; }
+.pub-photos { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 4px; margin-top: 12px; }
+.pub-photos button { padding: 0; border: 0; aspect-ratio: 1; background: #f1f3f6; cursor: pointer; overflow: hidden; border-radius: 4px; }
+.pub-photos img { width: 100%; height: 100%; object-fit: cover; display: block; }
+@media (max-width: 520px) { .pub-photos { grid-template-columns: repeat(3, minmax(0, 1fr)); } .pub-albums { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.viewer { position: fixed; inset: 0; z-index: 200; background: #000; display: grid; place-items: center; touch-action: pan-y; }
+.viewer > img { max-width: 100vw; max-height: calc(100vh - 60px); object-fit: contain; user-select: none; }
+.viewer-bar { position: absolute; top: 0; left: 0; right: 0; display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; color: #fff; font-size: 14px; }
+.viewer-bar a { color: #fff; margin-right: 14px; font-size: 13px; opacity: .85; }
+.viewer-bar button { background: none; border: 0; color: #fff; font-size: 22px; cursor: pointer; }
+.viewer-nav { position: absolute; top: 50%; transform: translateY(-50%); background: rgba(255, 255, 255, .15); border: 0; color: #fff; font-size: 34px; width: 46px; height: 64px; cursor: pointer; border-radius: 6px; }
+.viewer-nav.prev { left: 8px; }
+.viewer-nav.next { right: 8px; }
