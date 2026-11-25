@@ -78,7 +78,12 @@ export function lookup(key, b, rows, hymns) {
   return h ? `${h[1]}장` : row.content || '';
 }
 
-const fileName = (date) => `주일낮PPT(${(date || '').slice(2).replace(/-/g, '')}).pptx`;
+// 만든 시각을 붙여 이름이 겹치지 않게 함 (아이폰 미리보기는 이름이 같으면 예전 파일 화면을 섞어 보여 줌)
+const fileName = (date) => {
+  const t = new Date();
+  const hm = [t.getHours(), t.getMinutes(), t.getSeconds()].map((n) => String(n).padStart(2, '0')).join('');
+  return `주일낮PPT(${(date || '').slice(2).replace(/-/g, '')})_${hm}.pptx`;
+};
 
 export default function WorshipPpt({ b }) {
   const [info, setInfo] = useState(null); // 올린 서식 정보
@@ -188,6 +193,8 @@ export default function WorshipPpt({ b }) {
   };
 
   const make = async () => {
+    // 비어 있는 칸은 화면에 '찬송가' 같은 앞 글자만 남으므로 먼저 알려 줌
+    if (empty.length && !window.confirm(`비어 있는 칸이 있습니다: ${empty.map((k) => `{${k}}`).join(', ')}\n주보에 값이 없으면 그 화면에는 글자가 나오지 않습니다. 이대로 만들까요?`)) return;
     setBusy('PPT 만드는 중…');
     try {
       // 입력한 찬송 제목은 다음에 자동으로 채우도록 저장
@@ -221,6 +228,8 @@ export default function WorshipPpt({ b }) {
   };
 
   const set = (k, x) => setValues((v) => ({ ...v, [k]: x }));
+  // 값이 비어 있는 칸 (찬송 제목은 몰라도 되므로 뺌)
+  const empty = keys.filter((k) => !/제목$/.test(k) && !String(values[k] ?? '').trim());
 
   // 악보·교독문·찬양을 넣을 수 있는 자리 표시들
   const targets = keys.map((key) => ({ key, t: insertTarget(key, values[key], praise) })).filter((x) => x.t);
@@ -250,15 +259,16 @@ export default function WorshipPpt({ b }) {
       {info?.name && !loading && (
         <>
           <p className="muted small">{kdate(b.date)} 주보에서 찾아 채웠습니다. 칸을 고치면 PPT에 고친 대로 들어갑니다.</p>
+          {empty.length > 0 && <p className="warn small">빨간 칸은 주보에서 값을 찾지 못한 곳입니다. 예) 찬송 번호가 '찬송' 줄이 아닌 '기도' 줄에 적혀 있으면 {'{찬송}'} 칸이 비어 화면에 '찬송가' 글자만 나옵니다. 칸에 직접 넣거나 주보를 고쳐 주세요.</p>}
           {!keys.length && <p className="warn">서식에 자리 표시가 없습니다. 아래 사용법을 보고 PPT에 {'{영광송}'} 같은 글자를 넣어 주세요.</p>}
           <div className="form-grid">
             {keys.map((k) => (
-              <div key={k} className={'field' + (k === NEWS_KEY ? ' full' : '')}>
-                <label>{`{${k}}`}</label>
+              <div key={k} className={'field' + (k === NEWS_KEY ? ' full' : '') + (empty.includes(k) ? ' wppt-empty' : '')}>
+                <label>{`{${k}}`}{empty.includes(k) && <span className="wppt-empty-tag"> 비어 있음</span>}</label>
                 {k === NEWS_KEY ? (
                   <textarea rows={6} value={values[k] ?? ''} onChange={(e) => set(k, e.target.value)} />
                 ) : (
-                  <input value={values[k] ?? ''} onChange={(e) => set(k, e.target.value)} placeholder={/ 제목$/.test(k) ? '찬송 제목 (한 번 넣으면 기억)' : ''} />
+                  <input value={values[k] ?? ''} onChange={(e) => set(k, e.target.value)} placeholder={/ 제목$/.test(k) ? '찬송 제목 (한 번 넣으면 기억)' : '주보에 없음 — 직접 입력'} />
                 )}
               </div>
             ))}

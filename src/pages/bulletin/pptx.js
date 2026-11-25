@@ -13,7 +13,8 @@ export const NEWS_KEY = '교회소식';
 const PH = /\{([^{}\n]{1,40})\}/g;
 // 교회소식 한 화면에 넣을 양 (넘치면 화면을 복사해 이어서)
 const NEWS_PER_SLIDE = 3;
-const NEWS_CHARS_PER_SLIDE = 150;
+// 4:3 화면에 20pt 글자 기준, 150자면 아래로 넘치거나 옆 그림과 겹쳐서 100자로 줄임
+const NEWS_CHARS_PER_SLIDE = 100;
 
 const parse = (s) => new DOMParser().parseFromString(s, 'application/xml');
 const serialize = (doc) => {
@@ -119,8 +120,21 @@ function noAutoNumber(p) {
   pPr.replaceChild(p.ownerDocument.createElementNS(A, 'a:buNone'), auto);
 }
 
+/** 글이 글상자보다 길면 파워포인트가 글자를 줄여 맞추도록 (자동 맞춤) */
+function shrinkToFit(p) {
+  let n = p.parentNode;
+  while (n && n.localName !== 'txBody') n = n.parentNode;
+  const body = n && [...n.children].find((c) => c.localName === 'bodyPr');
+  if (!body) return;
+  [...body.children].filter((c) => ['spAutoFit', 'noAutofit', 'normAutofit'].includes(c.localName)).forEach((c) => c.remove());
+  // 순서 규칙: prstTxWarp 다음 자리
+  const warp = [...body.children].find((c) => c.localName === 'prstTxWarp');
+  body.insertBefore(p.ownerDocument.createElementNS(A, 'a:normAutofit'), warp ? warp.nextSibling : body.firstChild);
+}
+
 /** 교회소식 문단 하나를 항목 수만큼 문단으로 */
 function fillNews(p, items) {
+  shrinkToFit(p);
   if (!items.length) return setParaText(p, '');
   const tpl = p.cloneNode(true);
   let prev = p;
