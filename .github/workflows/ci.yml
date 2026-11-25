@@ -36,7 +36,7 @@ jobs:
           retention-days: 7
 
   frontend:
-    name: 화면 빌드 (React + Vite)
+    name: 화면 검사·테스트·빌드 (React + Vite)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -48,6 +48,12 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      - name: 코드 검사 (ESLint)
+        run: npm run lint
+
+      - name: 화면 테스트 (Vitest)
+        run: npm test
 
       - name: 빌드
         run: npx vite build --outDir dist-ci --emptyOutDir

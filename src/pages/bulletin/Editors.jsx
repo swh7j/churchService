@@ -244,7 +244,6 @@ export function TemplateEditor({ initial, onSave, onCancel }) {
   const [t, setT] = useState(initial);
   const [busy, setBusy] = useState(false);
   const set = (k) => (v) => setT((x) => ({ ...x, [k]: v }));
-  const setIn = (k, f) => (v) => setT((x) => ({ ...x, [k]: { ...x[k], [f]: v } }));
 
   const pickPhoto = async (e) => {
     const f = e.target.files?.[0];

@@ -162,6 +162,7 @@ export default function WorshipPpt({ b }) {
     loadLib();
     api.get('/worship-ppt/hymns').then((r) => setHymns(JSON.parse(r.hymns || '{}'))).catch(() => {});
     reloadTemplate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 화면이 열릴 때 한 번만 불러옴
   }, []);
 
   // 서식이나 찬송 제목 모음이 바뀌면 주보에서 다시 채움 (직접 고친 칸은 유지)

@@ -86,6 +86,7 @@ export default function Hymns({ manage = false }) {
       .catch((e) => alert(e.message));
   useEffect(() => {
     load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 화면이 열릴 때 한 번만 불러옴
   }, []);
 
   const rows = useMemo(() => (lib || []).filter((r) => r.kind === kind), [lib, kind]);

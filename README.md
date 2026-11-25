@@ -11,7 +11,7 @@
 | 백엔드 | **Spring Boot 4 (Java 17)**, Spring Security, JdbcTemplate, SQLite, Apache POI |
 | 프론트엔드 | **React 19**, Vite, React Router |
 | 운영 | Google Cloud e2-micro (항상 무료 범위), Caddy(HTTPS 자동), systemd, 배포 스크립트 |
-| 품질 | 테스트 60개 (JUnit 5, 실제 서버를 띄우는 통합 테스트, 교회 간 격리 테스트), GitHub Actions CI |
+| 품질 | 서버 테스트 61개 (JUnit 5, 실제 서버를 띄우는 통합 테스트, 교회 간 격리 테스트), 화면 테스트 23개 (Vitest), ESLint, GitHub Actions CI |
 
 ---
 
@@ -168,19 +168,24 @@ deploy/      서버 설치(setup.sh)·배포(deploy.ps1)
 
 ```bash
 cd api
-./mvnw test      # Windows: mvnw.cmd test  (Java 17)
+./mvnw test      # 서버 테스트. Windows: mvnw.cmd test  (Java 17)
+cd ..
+npm run check    # 화면: ESLint 검사 + Vitest 테스트
 ```
 
 - **단위 테스트**: 음력 → 양력 변환(명절 날짜·작은달 30일), 로그인 잠금 규칙, scrypt 해시, `.ppt` → 그림 변환(배경 합성)
 - **통합 테스트**: 빈 임시 폴더에 **실제 서버를 띄워 HTTP 로 요청** — 로그인·역할별 권한·세션 쿠키 플래그, CSP·요청 크기 제한(413),
   결산(월별 합계·소계 묶음·정렬·예산 검증), 앨범(공개/비공개 404·JPEG 검사·zip·사진 백업·삭제 30일 보관),
-  공용 보관함(전체 관리자만 쓰기), 요청·제보(10분 20개 제한·비밀글·답변), 백업 알림, 예배 PPT 배경 그림(그림 파일만·로그인 필요)
+  공용 보관함(전체 관리자만 쓰기), 요청·제보(10분 20개 제한·비밀글·답변), 백업 알림, 예배 PPT 배경 그림(그림 파일만·로그인 필요), 활동 기록 페이지 나누기
 - **교회 간 격리 테스트**: 두 번째 교회를 만들어 데이터·DB 파일·로그인 쿠키(이름을 바꿔 넣어도)·계정이 섞이지 않는지, 없는/중지된 교회 거절, 교회 값 정리
-- **GitHub Actions**: 푸시·PR 마다 서버 테스트(`mvnw verify`)와 화면 빌드
+- **화면 테스트 (Vitest + jsdom)**: 예배 PPT 서식 채우기(자리 표시·글꼴 유지·교회소식이 넘치면 화면 복사해 끼우기·자동 맞춤), 배경 그림 찾기,
+  주보 권·주 계산, 저장 값 읽기(깨진 JSON·기본값), 교회 소식 → 주보 소식, 날짜 도우미(달·해 넘김·윤년)
+- **ESLint**: 안 쓴 변수, import 안 한 컴포넌트, 목록 key 빠짐, 훅 잘못 쓰기 (모양은 검사하지 않음)
+- **GitHub Actions**: 푸시·PR 마다 서버 테스트(`mvnw verify`), 화면 검사·테스트·빌드
 
 ## 실행 방법
 
-필요: Node.js 20+, Java 17+ (Maven 은 `mvnw` 사용)
+필요: Node.js 22.12+, Java 17+ (Maven 은 `mvnw` 사용)
 
 ```bash
 npm install      # 처음 한 번만

@@ -37,7 +37,7 @@ export default function Bulletins() {
   const remove = (b) => confirmDelete(`${b.date} 주보를 삭제할까요?`, () => api.del(`/bulletins/${b.id}`)).then((ok) => ok && reload());
   // 지난 주보를 바탕으로 다음 주 주보 (헌금자 명단·교회 소식·메모는 비움, 권·주는 자동 계산으로)
   const copy = (b) => {
-    const { id, ...rest } = b;
+    const { id: _id, ...rest } = b; // 번호는 빼고 복사 (새 주보로 저장)
     const layout = parseLayout(b.layout);
     edit({ ...rest, date: addDays(b.date, 7), announcements: '', offering_names: '', memo: '', layout: { ...layout, vol: '', week: '' } });
   };
