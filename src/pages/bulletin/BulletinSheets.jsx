@@ -1,9 +1,11 @@
 // 4면 주보 인쇄 화면: A4 가로 2장 (바깥면: 교회소식 | 표지, 안쪽면: 주일낮예배 | 오후·수요예배)
+// 2026년 수암제일교회 주보 양식: 붓글씨 제목, 점선 예배 순서, 두 칸 오후·수요예배, 회색 표 봉사표
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { dotDate, volWeek } from './layout';
 import './bulletin.css';
 
 const lines = (s) => (s || '').split('\n');
+const filled = (a) => (a || []).map((x) => String(x || '').trim()).filter(Boolean);
 
 /** 미리보기가 열려 있는 동안만 인쇄 용지를 A4 가로·여백 없음으로 */
 function usePrintPage() {
@@ -47,217 +49,180 @@ export function FlipBackOption({ className = 'be-flip' }) {
   );
 }
 
-/** 세로쓰기 칸: 글자는 세우고, 숫자(예: 10월의 10)는 한 칸에 가로로 모아 세움 */
-function VerticalText({ text }) {
-  return (text || '').split(/(\d+)/).map((part, i) => (/^\d+$/.test(part) ? <span key={i} className="tcy">{part}</span> : part));
+/** 붓글씨 제목 (주일 낮 예배, 교회 소식 …) */
+function Brush({ children, className = '' }) {
+  return <h2 className={'bp-brush ' + className}>{children}</h2>;
 }
 
-function Title({ children }) {
-  return <h2 className="bp-title">{children}</h2>;
-}
-
-function Mark({ children }) {
+/**
+ * 정해진 폭에 글자를 고르게 벌려 씀 (묵    도, 다 함 께). 띄어쓰기가 있으면 낱말 단위로 벌림.
+ * 브라우저의 양쪽 맞춤은 한 줄짜리 한글을 벌리지 않아서 글자를 나눠 배치함
+ */
+function Spread({ text, className }) {
+  const s = String(text || '').trim();
+  const parts = /\s/.test(s) ? s.split(/\s+/) : [...s];
   return (
-    <h3 className="bp-mark">
-      <span className="bp-mark-icon" aria-hidden="true" />
-      {children}
-    </h3>
+    <span className={'bp-spread ' + (className || '')}>
+      {parts.map((x, i) => (
+        <span key={i}>{x}</span>
+      ))}
+    </span>
   );
 }
 
-function VerseBar({ text }) {
-  if (!text) return null;
-  return <div className="bp-verse">{text}</div>;
+/** 교단 이름을 두 줄로 (대한예수교 / 장로회) */
+function Denom({ text }) {
+  const s = String(text || '').replace(/\s+/g, '');
+  const cut = Math.ceil(s.length * 0.6);
+  return (
+    <span className="bp-denom">
+      {s.slice(0, cut)}
+      <br />
+      {s.slice(cut)}
+    </span>
+  );
 }
 
+/** 초록 형광펜 이름표 (합심기도제목, 우리의 비전 …) */
+function Tag({ children }) {
+  return <span className="bp-tag">{children}</span>;
+}
+
+/* ---------- 바깥면 왼쪽: 교회 소식 ---------- */
 function NewsPanel({ b, t }) {
   const times = t.serviceTimes || [];
   const half = Math.ceil(times.length / 2);
   return (
-    <div className="bp-panel">
-      <Title>교 회 소 식</Title>
-      {t.welcome && (
-        <div className="bp-welcome">
-          <span className="bp-welcome-tag">환영</span>
-          <p>{t.welcome}</p>
-        </div>
-      )}
+    <div className="bp-panel bp-news-panel">
+      <div className="bp-news-head">
+        <Brush>교회 소식</Brush>
+        {t.welcome && <p className="bp-welcome">{t.welcome}</p>}
+      </div>
       <div className="bp-news">
         {lines(b.announcements).map((l, i) => (
           <p key={i} className={/^\s*\d+[.)]/.test(l) ? 'num' : 'cont'}>
-            {l.trim() || ' '}
+            {l.trim() || ' '}
           </p>
         ))}
       </div>
       <div className="bp-grow" />
       {b.offering_names && (
-        <section>
-          <Mark>하나님께 드리는 향기로운 예물</Mark>
+        <section className="bp-offer-sec">
+          <Brush className="sm">하나님께 드리는 향기로운 예물</Brush>
           <div className="bp-offerings">
-            {lines(b.offering_names).map((l, i) => {
-              const m = l.match(/^\s*([^:：]+?)\s*[:：]\s*(.*)$/);
-              return m ? (
-                <div key={i} className="bp-offering">
-                  <span className="k">• {m[1]} :</span>
-                  <span className="v">{m[2]}</span>
-                </div>
-              ) : (
-                <div key={i} className="bp-offering">
-                  <span className="k" />
-                  <span className="v">{l}</span>
-                </div>
-              );
-            })}
+            {lines(b.offering_names)
+              .filter((l) => l.trim())
+              .map((l, i) => {
+                const m = l.match(/^\s*([^:：]+?)\s*[:：]\s*(.*)$/);
+                return (
+                  <div key={i} className="bp-offering">
+                    {m ? (
+                      <>
+                        <Spread className="k" text={m[1]} /> : {m[2]}
+                      </>
+                    ) : (
+                      l
+                    )}
+                  </div>
+                );
+              })}
           </div>
         </section>
       )}
       {times.length > 0 && (
         <section>
-          <Mark>예배시간안내</Mark>
-          <table className="bp-times">
-            <thead>
-              <tr>
-                <th>구 분</th>
-                <th>시 간</th>
-                <th>구 분</th>
-                <th>시 간</th>
-              </tr>
-            </thead>
-            <tbody>
-              {Array.from({ length: half }, (_, i) => (
-                <tr key={i}>
-                  <td>{times[i]?.name}</td>
-                  <td>{times[i]?.time}</td>
-                  <td>{times[i + half]?.name}</td>
-                  <td>{times[i + half]?.time}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <Brush className="sm">예배 시간 안내</Brush>
+          <div className="bp-times">
+            {['예배', '시간', '예배', '시간'].map((h, i) => (
+              <div key={i} className="th">{h}</div>
+            ))}
+            {Array.from({ length: half }, (_, i) => [times[i], times[i + half]]).flatMap(([l, r], i) => [
+              <div key={`a${i}`}>{l?.name}</div>,
+              <div key={`b${i}`}>{l?.time}</div>,
+              <div key={`c${i}`}>{r?.name}</div>,
+              <div key={`d${i}`}>{r?.time}</div>,
+            ])}
+          </div>
         </section>
       )}
     </div>
   );
 }
 
+/* ---------- 바깥면 오른쪽: 표지 ---------- */
 function CoverPanel({ b, t, church, vw }) {
-  const visions = (t.visions || []).filter(Boolean);
+  const visions = filled(t.visions);
   return (
-    <div className={'bp-panel bp-cover' + (t.coverPhoto ? ' has-photo' : '')} style={t.coverPhoto ? { backgroundImage: `url(${t.coverPhoto})` } : undefined}>
+    <div className="bp-panel bp-cover">
       <div className="bp-cover-top">
-        <span>{vw.vol ? `제${vw.vol}권 ${vw.week}주` : vw.week ? `제${vw.week}주` : ''}</span>
+        <span>{vw.vol ? `제 ${vw.vol}권 ${vw.week}주` : vw.week ? `제 ${vw.week}주` : ''}</span>
         <span>{dotDate(b.date)}</span>
       </div>
+      <div className="bp-cover-photo">{t.coverPhoto && <img src={t.coverPhoto} alt="" />}</div>
       <div className="bp-cover-name">
-        {t.denomination && <span className="bp-denom">{t.denomination}</span>}
+        {t.logo && <img className="bp-logo" src={t.logo} alt="" />}
+        {t.denomination && <Denom text={t.denomination} />}
         <span className="bp-church">{t.churchName || church}</span>
       </div>
       {t.motto && <div className="bp-motto">{t.motto}</div>}
+      <div className="bp-cover-info">
+        {visions.length > 0 && (
+          <div className="bp-cover-row">
+            <Tag>우리의 비전</Tag>
+            <ol>
+              {visions.map((v, i) => (
+                <li key={i}>{v}</li>
+              ))}
+            </ol>
+          </div>
+        )}
+        {t.mission && (
+          <div className="bp-cover-row">
+            <Tag>사명선언문</Tag>
+            <p>{t.mission}</p>
+          </div>
+        )}
+      </div>
       <div className="bp-grow" />
-      {(visions.length > 0 || t.mission || t.pastor || t.address) && (
-        <div className="bp-cover-box">
-          {visions.length > 0 && (
-            <div className="bp-cover-row">
-              <span className="bp-tag">우리의 비전</span>
-              <ol>
-                {visions.map((v, i) => (
-                  <li key={i}>{v}</li>
-                ))}
-              </ol>
-            </div>
-          )}
-          {t.mission && (
-            <div className="bp-cover-row">
-              <span className="bp-tag">사명선언문</span>
-              <p>{t.mission}</p>
-            </div>
-          )}
-          {t.pastor && <div className="bp-pastor">담임목사 : {t.pastor}</div>}
-          {t.staffLine && <div className="bp-staff">{t.staffLine}</div>}
-          {(t.address || t.contact || t.homepage) && (
-            <div className="bp-address">
-              {[t.address, t.contact].filter(Boolean).join('  ')}
-              {t.homepage && <div>홈페이지 {t.homepage}</div>}
-            </div>
-          )}
+      {(t.pastor || t.staffLine) && (
+        <div className="bp-staff">
+          {t.pastor && <strong>담임목사 : {t.pastor}</strong>}
+          {t.staffLine && <span>{t.staffLine}</span>}
         </div>
       )}
     </div>
   );
 }
 
-function MainPanel({ b, t, L }) {
-  const d = L.duty;
-  const hasDuty = d.month || d.guide || d.offering || d.prayDay || d.prayPm;
+/* ---------- 안쪽면 왼쪽: 주일 낮 예배 ---------- */
+function MainPanel({ b, L }) {
+  const rows = L.main.sections.flatMap((s) => s.rows);
   return (
-    <div className="bp-panel">
-      <VerseBar text={t.verseLeft} />
-      <Title>{b.title || '주 일 낮 예 배'}</Title>
+    <div className="bp-panel bp-main">
+      <Brush className="lg">{(b.title || '주일 낮 예배').replace(/\s+/g, ' ').replace(/^주 일 낮 예 배$/, '주일 낮 예배')}</Brush>
       <div className="bp-meta">
         <span>{L.main.time}</span>
         <span>{L.main.leader && `사회 : ${L.main.leader}`}</span>
       </div>
-      {L.main.sections.map((s, si) => (
-        <section key={si} className="bp-order-sec">
-          {s.title && <h4 className="bp-sec">◐ {s.title} ◑</h4>}
-          {s.rows.map((r, ri) => (
-            <div key={ri} className="bp-order">
-              <span className="stand">{r.stand ? '¶' : ''}</span>
-              <span className="item">{r.item}</span>
-              <span className="dots">{r.content && <span className="c">{r.content}</span>}</span>
-              <span className="who">{r.who}</span>
-            </div>
-          ))}
-        </section>
-      ))}
-      {L.main.sections.some((s) => s.rows.some((r) => r.stand)) && <div className="bp-stand-note">¶ 일어서 주세요</div>}
-      <div className="bp-grow" />
-      <div className="bp-bottom">
-        {hasDuty && (
-          <div className="bp-duty">
-            {t.dutyVerse && <div className="bp-small-verse">{t.dutyVerse}</div>}
-            <table>
-              <tbody>
-                <tr>
-                  <td rowSpan="3" className="month"><VerticalText text={d.month} /></td>
-                  <th>안 내</th>
-                  <th>헌 금</th>
-                  <th colSpan="2">다음주기도</th>
-                </tr>
-                <tr>
-                  <td rowSpan="2">{d.guide}</td>
-                  <td rowSpan="2">{d.offering}</td>
-                  <th>낮</th>
-                  <td>{d.prayDay}</td>
-                </tr>
-                <tr>
-                  <th>오후</th>
-                  <td>{d.prayPm}</td>
-                </tr>
-              </tbody>
-            </table>
+      <div className="bp-orders">
+        {rows.map((r, i) => (
+          <div key={i} className="bp-order">
+            <Spread className="item" text={r.item} />
+            <span className="dots">{r.content && <span className="c">{r.content}</span>}</span>
+            <Spread className="who" text={r.who} />
           </div>
-        )}
-        {(t.worshipNotes || []).filter(Boolean).length > 0 && (
-          <div className="bp-notes">
-            <h4>경건한 예배를 위하여</h4>
-            <ul>
-              {t.worshipNotes.filter(Boolean).map((n, i) => (
-                <li key={i}>{n}</li>
-              ))}
-            </ul>
-          </div>
-        )}
+        ))}
       </div>
     </div>
   );
 }
 
+/* ---------- 안쪽면 오른쪽: 오후·수요예배, 합심기도, 봉사표 ---------- */
 function SubService({ s }) {
   return (
     <div className="bp-sub">
-      <Title>{s.title}</Title>
-      <div className="bp-meta">
+      <Brush className="md">{s.title}</Brush>
+      <div className="bp-sub-meta">
         <span>{s.time}</span>
         <span>{s.leader && `사회 : ${s.leader}`}</span>
       </div>
@@ -271,60 +236,69 @@ function SubService({ s }) {
   );
 }
 
-function PrayerBox({ p }) {
-  if (!p?.title) return null;
+function Duty({ d }) {
+  if (!(d.month || d.guide || d.offering || d.prayDay || d.prayPm)) return null;
   return (
-    <div className="bp-pbox">
-      <h4>{p.title}</h4>
-      <div>{p.time}</div>
-      {p.leader && <div>사회 : {p.leader}</div>}
-    </div>
+    <table className="bp-duty">
+      <tbody>
+        <tr>
+          <td rowSpan="3" className="month">{d.month}</td>
+          <th>안내</th>
+          <th>헌금</th>
+          <th colSpan="2">다음주기도</th>
+        </tr>
+        <tr>
+          <td rowSpan="2">{d.guide}</td>
+          <td rowSpan="2">{d.offering}</td>
+          <td className="when">낮</td>
+          <td>{d.prayDay}</td>
+        </tr>
+        <tr>
+          <td className="when pm">오후</td>
+          <td>{d.prayPm}</td>
+        </tr>
+      </tbody>
+    </table>
   );
 }
 
 function SubPanel({ t, L }) {
-  const items = (t.prayerItems || []).filter(Boolean);
-  const box = (t.boxItems || []).filter(Boolean);
-  const half = Math.ceil(box.length / 2);
+  const items = filled(t.prayerItems);
+  const notes = filled(t.worshipNotes);
   return (
-    <div className="bp-panel">
-      <VerseBar text={t.verseRight} />
+    <div className="bp-panel bp-right">
       <div className="bp-subs">
         <SubService s={L.pm} />
         <SubService s={L.wed} />
       </div>
-      <div className="bp-pboxes">
-        <PrayerBox p={t.dawn} />
-        <PrayerBox p={t.night} />
-      </div>
       {items.length > 0 && (
         <section className="bp-prayer">
-          <h4>
-            합심기도제목 {t.prayerVerse && <small>{t.prayerVerse}</small>}
-          </h4>
-          <ol>
+          <Tag>합심기도제목</Tag>
+          <ul>
             {items.map((x, i) => (
               <li key={i}>{x}</li>
             ))}
-          </ol>
+          </ul>
         </section>
       )}
       <div className="bp-grow" />
-      {(t.boxTitle || box.length > 0) && (
-        <div className="bp-box">
-          {t.boxTitle && <div className="bp-box-title">{t.boxTitle}</div>}
-          <div className="bp-box-cols">
-            <ol>
-              {box.slice(0, half).map((x, i) => (
-                <li key={i}>{x}</li>
+      <div className="bp-bottom">
+        <Duty d={L.duty} />
+        {notes.length > 0 && (
+          <div className="bp-notes">
+            <Tag>경건한 예배를 위하여</Tag>
+            <ul>
+              {notes.map((n, i) => (
+                <li key={i}>{n}</li>
               ))}
-            </ol>
-            <ol start={half + 1}>
-              {box.slice(half).map((x, i) => (
-                <li key={i}>{x}</li>
-              ))}
-            </ol>
+            </ul>
           </div>
+        )}
+      </div>
+      {(t.address || t.contact || t.homepage) && (
+        <div className="bp-address">
+          <div>{[t.address, t.contact].filter(Boolean).join('  ')}</div>
+          {t.homepage && <div>{t.homepage}</div>}
         </div>
       )}
     </div>
@@ -335,7 +309,14 @@ function SubPanel({ t, L }) {
 export default function BulletinSheets({ b, t, L, church }) {
   usePrintPage();
   const ref = useRef(null);
-  // 내용이 많아 한 면을 넘치면 그 면만 넘치지 않을 만큼 글자를 줄임
+  // 내용이 많아 한 면을 넘치면 그 면만 넘치지 않을 만큼 글자를 줄임 (글꼴을 받은 뒤 다시 잼)
+  const [fontsReady, setFontsReady] = useState(0);
+  useEffect(() => {
+    import('./fonts')
+      .then(() => document.fonts?.ready)
+      .then(() => setFontsReady((n) => n + 1))
+      .catch(() => {});
+  }, []);
   useLayoutEffect(() => {
     ref.current?.querySelectorAll('.bp-panel').forEach((p) => {
       p.style.zoom = '';
@@ -359,7 +340,7 @@ export default function BulletinSheets({ b, t, L, church }) {
   const auto = volWeek(b.date, t.volBaseYear);
   const vw = { vol: L.vol || auto.vol, week: L.week || auto.week };
   return (
-    <div className="bp-sheets print-area" ref={ref} style={{ '--fit': fit }}>
+    <div className="bp-sheets print-area" ref={ref} style={{ '--fit': fit }} data-fonts={fontsReady}>
       <div className="bp-fit">
         <div className="bp-sheet">
           <NewsPanel b={b} t={t} />
@@ -368,7 +349,7 @@ export default function BulletinSheets({ b, t, L, church }) {
       </div>
       <div className="bp-fit">
         <div className="bp-sheet">
-          <MainPanel b={b} t={t} L={L} />
+          <MainPanel b={b} L={L} />
           <SubPanel t={t} L={L} />
         </div>
       </div>

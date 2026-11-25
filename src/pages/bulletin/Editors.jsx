@@ -45,7 +45,7 @@ function RowTools({ rows, i, set }) {
   );
 }
 
-/** 주일낮예배 순서: 구역(영광과 감사 등)마다 [¶ 일어섬, 순서, 내용, 담당] */
+/** 주일낮예배 순서: 구역마다 [순서, 내용, 담당] (구역은 작성할 때 묶어 보는 용도) */
 function MainOrder({ main, set }) {
   const setSec = (si, s) => set({ ...main, sections: main.sections.map((x, k) => (k === si ? s : x)) });
   return (
@@ -53,13 +53,12 @@ function MainOrder({ main, set }) {
       {main.sections.map((s, si) => (
         <div key={si} className="be-sec">
           <div className="be-sec-head">
-            <input value={s.title} placeholder="구역 제목 (예: 영광과 감사)" onChange={(e) => setSec(si, { ...s, title: e.target.value })} />
+            <input value={s.title} placeholder="구역 이름 (작성용 메모, 주보에는 나오지 않음)" onChange={(e) => setSec(si, { ...s, title: e.target.value })} />
             <RowTools rows={main.sections} i={si} set={(sections) => set({ ...main, sections })} />
           </div>
           <table className="be-rows">
             <thead>
               <tr>
-                <th title="일어서는 순서">¶</th>
                 <th>순서</th>
                 <th>내용 (찬송·본문·설교 제목 등)</th>
                 <th>담당</th>
@@ -71,7 +70,6 @@ function MainOrder({ main, set }) {
                 const setRow = (patch) => setSec(si, { ...s, rows: s.rows.map((x, k) => (k === ri ? { ...x, ...patch } : x)) });
                 return (
                   <tr key={ri}>
-                    <td><input type="checkbox" checked={!!r.stand} onChange={(e) => setRow({ stand: e.target.checked })} aria-label="일어서는 순서" /></td>
                     <td><input value={r.item} onChange={(e) => setRow({ item: e.target.value })} /></td>
                     <td><input value={r.content} onChange={(e) => setRow({ content: e.target.value })} /></td>
                     <td><input value={r.who} onChange={(e) => setRow({ who: e.target.value })} /></td>
@@ -259,6 +257,17 @@ export function TemplateEditor({ initial, onSave, onCancel }) {
     }
   };
 
+  const pickLogo = async (e) => {
+    const f = e.target.files?.[0];
+    e.target.value = '';
+    if (!f) return;
+    try {
+      set('logo')(await shrinkImage(f, 400, 0.9));
+    } catch (err) {
+      alert(err.message);
+    }
+  };
+
   const times = t.serviceTimes || [];
   const setTime = (i, patch) => set('serviceTimes')(times.map((x, k) => (k === i ? { ...x, ...patch } : x)));
 
@@ -289,15 +298,23 @@ export function TemplateEditor({ initial, onSave, onCancel }) {
             <input type="file" accept="image/*" onChange={pickPhoto} />
             {t.coverPhoto && <button type="button" className="btn sm danger" onClick={() => set('coverPhoto')('')}>사진 빼기</button>}
           </div>
-          <small className="muted">세로 사진이 잘 맞습니다. 올릴 때 자동으로 크기를 줄입니다.</small>
+          <small className="muted">교회 건물 사진이 잘 맞습니다. 가장자리는 흐리게 처리해 표지 위쪽에 넣습니다. 올릴 때 자동으로 크기를 줄입니다.</small>
+        </div>
+        <div className="field full">
+          <label>교단 로고 (교회 이름 왼쪽)</label>
+          <div className="be-inline">
+            {t.logo && <img src={t.logo} alt="교단 로고" className="be-logo" />}
+            <input type="file" accept="image/*" onChange={pickLogo} />
+            {t.logo && <button type="button" className="btn sm danger" onClick={() => set('logo')('')}>로고 빼기</button>}
+          </div>
         </div>
         <Text full area rows={3} label="우리의 비전 (한 줄에 하나)" value={linesOf(t.visions)} onChange={(v) => set('visions')(toLines(v))} />
         <Text full area rows={3} label="사명선언문" value={t.mission} onChange={set('mission')} />
         <Text label="담임목사" value={t.pastor} onChange={set('pastor')} />
-        <Text label="그 밖의 섬기는 분 (한 줄)" value={t.staffLine} onChange={set('staffLine')} placeholder="장로 : 홍길동    반주 : 김철수" />
-        <Text label="주소" value={t.address} onChange={set('address')} />
+        <Text label="그 밖의 섬기는 분 (한 줄)" value={t.staffLine} onChange={set('staffLine')} placeholder="시무장로 : 홍길동 , 김철수    반주 : 이영희" />
+        <Text label="주소 (안쪽 면 맨 아래)" value={t.address} onChange={set('address')} />
         <Text label="전화·팩스" value={t.contact} onChange={set('contact')} />
-        <Text label="홈페이지" value={t.homepage} onChange={set('homepage')} />
+        <Text label="홈페이지 (카페 주소 등)" value={t.homepage} onChange={set('homepage')} />
       </div>
 
       <h4 className="be-h">교회소식 면</h4>
@@ -320,24 +337,10 @@ export function TemplateEditor({ initial, onSave, onCancel }) {
         </div>
       </div>
 
-      <h4 className="be-h">안쪽 면</h4>
+      <h4 className="be-h">안쪽 면 (오후·수요예배 쪽)</h4>
       <div className="form-grid">
-        <Text full label="왼쪽 위 말씀" value={t.verseLeft} onChange={set('verseLeft')} />
-        <Text full label="오른쪽 위 말씀" value={t.verseRight} onChange={set('verseRight')} />
-        <Text label="상자 1 제목" value={t.dawn?.title} onChange={setIn('dawn', 'title')} />
-        <Text label="상자 1 시간" value={t.dawn?.time} onChange={setIn('dawn', 'time')} />
-        <Text label="상자 1 사회" value={t.dawn?.leader} onChange={setIn('dawn', 'leader')} />
-        <span />
-        <Text label="상자 2 제목" value={t.night?.title} onChange={setIn('night', 'title')} />
-        <Text label="상자 2 시간" value={t.night?.time} onChange={setIn('night', 'time')} />
-        <Text label="상자 2 사회" value={t.night?.leader} onChange={setIn('night', 'leader')} />
-        <span />
-        <Text full label="합심기도제목 옆 말씀" value={t.prayerVerse} onChange={set('prayerVerse')} />
         <Text full area rows={3} label="합심기도제목 (한 줄에 하나)" value={linesOf(t.prayerItems)} onChange={(v) => set('prayerItems')(toLines(v))} />
-        <Text full label="봉사표 위 말씀" value={t.dutyVerse} onChange={set('dutyVerse')} />
         <Text full area rows={2} label="경건한 예배를 위하여 (한 줄에 하나)" value={linesOf(t.worshipNotes)} onChange={(v) => set('worshipNotes')(toLines(v))} />
-        <Text full label="오른쪽 아래 상자 제목" value={t.boxTitle} onChange={set('boxTitle')} />
-        <Text full area rows={4} label="오른쪽 아래 상자 내용 (한 줄에 하나, 두 칸으로 나눠 표시)" value={linesOf(t.boxItems)} onChange={(v) => set('boxItems')(toLines(v))} />
       </div>
 
       <div className="form-actions">
