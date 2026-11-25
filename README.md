@@ -10,6 +10,7 @@
 - 프론트엔드: React 19, Vite
 - 운영: Google Cloud e2-micro (무료 범위), Caddy, systemd
 - 테스트: 서버 61개(JUnit 5), 화면 25개(Vitest), ESLint, GitHub Actions
+- 개발 방식: Claude Code(AI)와 함께 개발했습니다. 요구사항 정리, 설계 판단, 결과 검증, 배포와 운영은 직접 했습니다.
 
 ## 만든 이유
 
