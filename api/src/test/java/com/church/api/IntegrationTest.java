@@ -64,6 +64,23 @@ public abstract class IntegrationTest {
 		return new Client(base());
 	}
 
+	/**
+	 * 백업 만들기. 파일 이름이 초 단위라 다른 테스트(앨범 등)가 같은 초에 백업했으면 400 "방금 백업했습니다"가 남
+	 * (CI처럼 빠른 곳에서 가끔 실패하던 원인) → 다음 초까지 기다렸다 다시 만듦
+	 */
+	protected static String newBackup(Client a) {
+		Res r = a.post("/api/backups", Map.of());
+		if (r.status() == 400) {
+			try {
+				Thread.sleep(1100);
+			} catch (InterruptedException e) {
+				Thread.currentThread().interrupt();
+			}
+			r = a.post("/api/backups", Map.of());
+		}
+		return r.ok().json().path("name").asString();
+	}
+
 	/** 관리자로 로그인한 클라이언트 (처음이면 설치 코드로 관리자 계정을 만듦) */
 	protected synchronized Client admin() {
 		Client c = client();

@@ -33,7 +33,7 @@ class BackupReminderTest extends IntegrationTest {
 		assertThat(b.path("due").asBoolean()).isTrue();
 		assertThat(b.path("lastDownload").isNull()).isTrue();
 
-		String name = a.post("/api/backups", java.util.Map.of()).ok().json().path("name").asString();
+		String name = newBackup(a);
 		a.get("/api/backups/" + name + "/download").ok();
 		b = a.get("/api/dashboard").ok().json().path("backup");
 		assertThat(b.path("due").asBoolean()).isFalse();

@@ -92,7 +92,7 @@ class AlbumTest extends IntegrationTest {
 		assertThat(zip.header("Content-Type")).startsWith("application/zip");
 		assertThat(zip.body()).startsWith("PK");
 
-		a.post("/api/backups", Map.of()).ok();
+		newBackup(a);
 		Path mirror = ROOT.resolve("backups").resolve("_photos").resolve(CHURCH);
 		String file = p1.path("file").asString();
 		assertThat(mirror.resolve(file + ".jpg")).exists();
