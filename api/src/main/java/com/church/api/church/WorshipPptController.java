@@ -8,6 +8,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -34,6 +35,7 @@ public class WorshipPptController {
 	private static final MediaType PPTX = MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.presentationml.presentation");
 	private static final int MAX_BYTES = 40_000_000;
 	private static final String HYMNS = "hymn_titles";
+	private static final int MAX_BG_BYTES = 8_000_000;
 
 	private final JdbcTemplate jdbc;
 	private final AuditService audit;
@@ -61,7 +63,10 @@ public class WorshipPptController {
 	@GetMapping
 	public Map<String, Object> info() {
 		List<Map<String, Object>> r = jdbc.queryForList("SELECT name, length(file) AS size, updated_at FROM worship_ppt WHERE id = 1");
-		return r.isEmpty() ? Map.of() : r.get(0);
+		Map<String, Object> m = r.isEmpty() ? new java.util.LinkedHashMap<>() : new java.util.LinkedHashMap<>(r.get(0));
+		List<String> bg = jdbc.queryForList("SELECT updated_at FROM worship_ppt_bg WHERE id = 1", String.class);
+		if (!bg.isEmpty()) m.put("background_at", bg.get(0));
+		return m;
 	}
 
 	@GetMapping("/file")
@@ -98,5 +103,35 @@ public class WorshipPptController {
 		if (!s.startsWith("{") || s.length() > 200_000) throw ApiException.bad("찬송 제목을 저장하지 못했습니다.");
 		jdbc.update("INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value", HYMNS, s);
 		return Map.of("ok", true);
+	}
+
+	/** 배경 그림 (올리지 않았으면 404) */
+	@GetMapping("/background")
+	public ResponseEntity<byte[]> background() {
+		List<byte[]> r = jdbc.queryForList("SELECT file FROM worship_ppt_bg WHERE id = 1", byte[].class);
+		if (r.isEmpty()) throw ApiException.notFound("올린 배경 그림이 없습니다.");
+		byte[] f = r.get(0);
+		MediaType type = f.length > 3 && (f[0] & 0xff) == 0x89 && f[1] == 'P' ? MediaType.IMAGE_PNG : MediaType.IMAGE_JPEG;
+		return ResponseEntity.ok().contentType(type).cacheControl(CacheControl.noCache().cachePrivate()).body(f);
+	}
+
+	/** 배경 그림 바꾸기: 그림 파일(jpg·png) 내용을 그대로 body 로 받음 */
+	@PutMapping(value = "/background", consumes = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+	public Map<String, Object> uploadBackground(@RequestBody byte[] file) {
+		if (file.length > MAX_BG_BYTES) throw ApiException.bad("그림 파일이 너무 큽니다.");
+		boolean jpg = file.length > 3 && (file[0] & 0xff) == 0xFF && (file[1] & 0xff) == 0xD8;
+		boolean png = file.length > 3 && (file[0] & 0xff) == 0x89 && file[1] == 'P' && file[2] == 'N' && file[3] == 'G';
+		if (!jpg && !png) throw ApiException.bad("jpg 나 png 그림을 올려 주세요.");
+		jdbc.update("INSERT INTO worship_ppt_bg (id, file, updated_at) VALUES (1, ?, datetime('now','localtime')) "
+				+ "ON CONFLICT(id) DO UPDATE SET file = excluded.file, updated_at = excluded.updated_at", file);
+		audit.log("예배 PPT 배경 변경", "worship_ppt_bg", 1L, Api.map("size", file.length));
+		return info();
+	}
+
+	/** 배경 그림 빼기 (서식에 들어 있는 원래 배경으로) */
+	@DeleteMapping("/background")
+	public Map<String, Object> deleteBackground() {
+		if (jdbc.update("DELETE FROM worship_ppt_bg WHERE id = 1") > 0) audit.log("예배 PPT 배경 삭제", "worship_ppt_bg", 1L, Map.of());
+		return info();
 	}
 }

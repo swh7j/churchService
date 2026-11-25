@@ -222,6 +222,13 @@ CREATE TABLE IF NOT EXISTS worship_ppt (
   updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
 );
 
+-- 예배 PPT 배경 그림: 서식의 배경(가장 많은 화면에 꽉 차게 깔린 그림)을 PPT 만들 때 이 그림으로 바꿈. 없으면 서식 그대로
+CREATE TABLE IF NOT EXISTS worship_ppt_bg (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  file BLOB NOT NULL,
+  updated_at TEXT NOT NULL DEFAULT (datetime('now','localtime'))
+);
+
 -- (더 이상 안 씀) 예전 교회별 찬송가 보관함. 지금은 공용 찬송가 보관함(SongLibrary, data/library)을 씀.
 -- 운영 DB 에서는 비워 두었고, 표만 남겨 둠 (지우려면 DB 변경이 따로 필요)
 CREATE TABLE IF NOT EXISTS ppt_inserts (

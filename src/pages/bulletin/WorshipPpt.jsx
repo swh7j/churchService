@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../api';
 import { withChurch } from '../../church';
 import { kdate } from '../../utils';
-import { parseLayout } from './layout';
+import { parseLayout, shrinkImage } from './layout';
 import { fillTemplate, NEWS_KEY, templateKeys, unpackImages } from './pptx';
 import { songKey } from '../Hymns';
 
@@ -212,7 +212,14 @@ export default function WorshipPpt({ b }) {
         if (skip[key] || !t.items.some((it) => lib[libKey(it)])) continue;
         inserts[key] = await loadPics(t);
       }
-      const blob = await fillTemplate(buf, values, inserts);
+      // 배경 그림을 올려 두었으면 서식의 배경을 그 그림으로 바꿈
+      let background = null;
+      if (info?.background_at) {
+        const res = await fetch(withChurch('/api/worship-ppt/background'));
+        if (!res.ok) throw new Error('배경 그림을 받지 못했습니다. 다시 눌러 주세요.');
+        background = { data: new Uint8Array(await res.arrayBuffer()) };
+      }
+      const blob = await fillTemplate(buf, values, inserts, background);
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       a.download = fileName(b.date);
@@ -224,6 +231,33 @@ export default function WorshipPpt({ b }) {
       alert('PPT를 만들지 못했습니다. ' + x.message);
     } finally {
       setBusy('');
+    }
+  };
+
+  /** 배경 그림 올리기: 긴 변 2000px 이하 JPEG 로 줄여서 보냄 */
+  const uploadBg = async (e) => {
+    const f = e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    setBusy('배경 그림 올리는 중…');
+    try {
+      const url = await shrinkImage(f, 2000, 0.88);
+      const body = new Uint8Array(await (await fetch(url)).arrayBuffer());
+      const res = await fetch(withChurch('/api/worship-ppt/background'), { method: 'PUT', headers: { 'Content-Type': 'application/octet-stream' }, body });
+      if (!res.ok) throw new Error((await res.json().catch(() => null))?.error || '배경 그림을 올리지 못했습니다.');
+      setInfo(await res.json());
+    } catch (x) {
+      alert(x.message);
+    } finally {
+      setBusy('');
+    }
+  };
+  const removeBg = async () => {
+    if (!window.confirm('올린 배경 그림을 빼고 서식에 들어 있는 원래 배경으로 만들까요?')) return;
+    try {
+      setInfo(await api.del('/worship-ppt/background'));
+    } catch (x) {
+      alert(x.message);
     }
   };
 
@@ -250,6 +284,24 @@ export default function WorshipPpt({ b }) {
           </label>
         </div>
       </div>
+      {info?.name && (
+        <div className="wppt-bg">
+          <strong>배경 그림</strong>
+          {info.background_at ? (
+            <img src={withChurch(`/api/worship-ppt/background?v=${encodeURIComponent(info.background_at)}`)} alt="배경 그림" />
+          ) : (
+            <span className="muted small">서식에 들어 있는 배경 그대로</span>
+          )}
+          <div className="row-actions">
+            <label className="btn sm">
+              <input type="file" accept="image/*" hidden onChange={uploadBg} disabled={!!busy} />
+              {info.background_at ? '배경 바꾸기' : '배경 그림 올리기'}
+            </label>
+            {info.background_at && <button type="button" className="btn sm" onClick={removeBg} disabled={!!busy}>원래 배경으로</button>}
+          </div>
+          <p className="muted small">표지를 뺀 화면들의 배경(화면 전체에 깔린 그림)을 이 그림으로 바꿔 만듭니다. 글자가 검은색이라 밝고 연한 그림이 좋습니다. 화면 비율에 맞게 가운데를 잘라 씁니다.</p>
+        </div>
+      )}
       {err && <p className="warn">{err}</p>}
       {info && !info.name && common?.size ? (
         <p className="muted small">처음이라면 <strong>공통 양식 받기</strong>로 기본 서식을 받아, 파워포인트에서 교회 이름·표어·배경을 고친 뒤 <strong>서식 올리기</strong>로 올려 주세요.</p>

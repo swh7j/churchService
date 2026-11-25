@@ -151,10 +151,12 @@ function fillNews(p, items) {
  * 서식(buf)에 값(values)을 채운 새 .pptx Blob.
  * values: { '영광송': '62장', '영광송 제목': '고요히 머리숙여', ... , 교회소식: '1. …\n2. …' }
  * inserts: { '영광송': [{ data: Uint8Array, ext: 'png' }, …] } → {영광송} 이 있는 화면 바로 뒤에 그림 화면으로 넣음
+ * background: { data: Uint8Array } → 서식의 배경 그림을 이 그림으로 바꿈 (없으면 서식 그대로)
  */
-export async function fillTemplate(buf, values, inserts = {}) {
+export async function fillTemplate(buf, values, inserts = {}, background = null) {
   const zip = await loadZip(buf);
   const paths = await slidePaths(zip);
+  if (background) await replaceBackground(zip, paths, background);
   const newsPages = chunkNews(splitNews(values[NEWS_KEY]));
   const fill = (k) => (Object.prototype.hasOwnProperty.call(values, k) ? String(values[k] ?? '') : '');
   const extra = []; // [원래 슬라이드 경로, 새 슬라이드 경로]
@@ -208,6 +210,70 @@ export async function fillTemplate(buf, values, inserts = {}) {
   }
   if (extra.length) await addSlides(zip, extra);
   return zip.generateAsync({ type: 'blob', compression: 'DEFLATE', mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
+}
+
+/**
+ * 서식의 배경 그림 = 화면 전체를 덮는 그림 중 가장 많은 화면에 쓰인 것 (2화면 이상).
+ * 그 그림을 가리키는 화면들의 연결을 새 그림으로 바꿈. 새 그림은 화면 비율에 맞게 가운데를 잘라 씀
+ */
+export async function findBackground(zip, paths) {
+  const pres = await zip.file('ppt/presentation.xml').async('string');
+  const W = Number(pres.match(/<p:sldSz[^>]*\bcx="(\d+)"/)?.[1] || 9144000);
+  const H = Number(pres.match(/<p:sldSz[^>]*\bcy="(\d+)"/)?.[1] || 6858000);
+  const count = {};
+  for (const path of paths) {
+    const relsFile = zip.file(relsOf(path));
+    if (!relsFile) continue;
+    const target = Object.fromEntries(els(parse(await relsFile.async('string')), PKG, 'Relationship').map((r) => [r.getAttribute('Id'), r.getAttribute('Target')]));
+    const doc = parse(await zip.file(path).async('string'));
+    const seen = new Set();
+    for (const pic of els(doc, P, 'pic')) {
+      const off = els(pic, A, 'off')[0];
+      const ext = els(pic, A, 'ext').find((e) => e.hasAttribute('cx'));
+      const blip = els(pic, A, 'blip')[0];
+      if (!off || !ext || !blip) continue;
+      const full = Math.abs(Number(off.getAttribute('x'))) < W * 0.03 && Math.abs(Number(off.getAttribute('y'))) < H * 0.03 && Number(ext.getAttribute('cx')) > W * 0.95 && Number(ext.getAttribute('cy')) > H * 0.95;
+      const t = target[blip.getAttributeNS(R, 'embed')];
+      if (full && t && !seen.has(t)) {
+        seen.add(t);
+        count[t] = (count[t] || 0) + 1;
+      }
+    }
+  }
+  const [best, n] = Object.entries(count).sort((a, b) => b[1] - a[1])[0] || [];
+  return n >= 2 ? { target: best, W, H } : null;
+}
+
+async function replaceBackground(zip, paths, background) {
+  const found = await findBackground(zip, paths);
+  if (!found) return;
+  const data = await cropTo(background.data, found.W / found.H);
+  zip.file('ppt/media/worship-bg.jpeg', data);
+  await ensureDefault(zip, 'jpeg', 'image/jpeg');
+  const from = `Target="${found.target}"`;
+  for (const path of paths) {
+    const f = zip.file(relsOf(path));
+    if (!f) continue;
+    const xml = await f.async('string');
+    if (xml.includes(from)) zip.file(relsOf(path), xml.split(from).join('Target="../media/worship-bg.jpeg"'));
+  }
+}
+
+/** 그림을 ratio(가로/세로) 비율로 가운데를 잘라 JPEG 로 (긴 변 최대 1920) */
+async function cropTo(data, ratio) {
+  const bmp = await createImageBitmap(new Blob([data]));
+  let sw = bmp.width;
+  let sh = bmp.height;
+  if (sw / sh > ratio) sw = Math.round(sh * ratio);
+  else sh = Math.round(sw / ratio);
+  const k = Math.min(1, MAX_SIDE / Math.max(sw, sh));
+  const c = document.createElement('canvas');
+  c.width = Math.round(sw * k);
+  c.height = Math.round(sh * k);
+  c.getContext('2d').drawImage(bmp, (bmp.width - sw) / 2, (bmp.height - sh) / 2, sw, sh, 0, 0, c.width, c.height);
+  bmp.close?.();
+  const blob = await new Promise((r) => c.toBlob(r, 'image/jpeg', 0.9));
+  return new Uint8Array(await blob.arrayBuffer());
 }
 
 /** 복사한 슬라이드를 발표 순서(원래 슬라이드 바로 뒤)에 등록 */
