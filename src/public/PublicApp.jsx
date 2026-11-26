@@ -81,7 +81,7 @@ export default function PublicApp() {
         </main>
         <footer className="pub-foot no-print">
           <span>{church}</span>
-          <a href={churchPath('/admin')}>관리자 로그인</a> · <a href="/?pick=1">다른 교회</a>
+          <span><a href={churchPath('/admin')}>관리자 로그인</a> · <a href="/?pick=1">다른 교회</a></span>
         </footer>
       </div>
     </BrowserRouter>
