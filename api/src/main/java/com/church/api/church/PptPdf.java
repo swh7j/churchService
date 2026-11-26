@@ -2,6 +2,8 @@ package com.church.api.church;
 
 import java.awt.Color;
 import java.awt.Dimension;
+import java.awt.Font;
+import java.awt.font.FontRenderContext;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
 import java.awt.image.BufferedImage;
@@ -21,7 +23,12 @@ import javax.imageio.ImageWriter;
 import javax.imageio.stream.ImageOutputStream;
 
 import org.apache.poi.xslf.usermodel.XMLSlideShow;
+import org.apache.poi.xslf.usermodel.XSLFGroupShape;
+import org.apache.poi.xslf.usermodel.XSLFShape;
 import org.apache.poi.xslf.usermodel.XSLFSlide;
+import org.apache.poi.xslf.usermodel.XSLFTextParagraph;
+import org.apache.poi.xslf.usermodel.XSLFTextRun;
+import org.apache.poi.xslf.usermodel.XSLFTextShape;
 
 import com.church.api.common.ApiException;
 
@@ -52,7 +59,10 @@ public final class PptPdf {
 			int h = (int) Math.round(w * d.getHeight() / d.getWidth());
 			double k = w / d.getWidth();
 			List<byte[]> pages = new ArrayList<>();
-			for (XSLFSlide s : ss.getSlides()) pages.add(jpeg(draw(s, w, h, k)));
+			for (XSLFSlide s : ss.getSlides()) {
+				wrapAtSpaces(s.getShapes());
+				pages.add(jpeg(draw(s, w, h, k)));
+			}
 			if (pages.isEmpty()) throw ApiException.bad("화면이 없는 PPT 입니다.");
 			return pdf(pages, w, h);
 		} catch (ApiException e) {
@@ -62,6 +72,79 @@ public final class PptPdf {
 		} finally {
 			ONE.release();
 		}
+	}
+
+	/** 줄 폭을 이만큼만 채움 (글자 폭을 어림하므로 POI 가 다시 줄을 나누지 않게 여유를 둠) */
+	private static final double FILL = 0.95;
+	private static final FontRenderContext FRC = new FontRenderContext(null, true, true);
+
+	/**
+	 * 한글 글을 띄어쓰기에서 미리 줄바꿈.
+	 * POI 는 한글을 글자마다 줄을 나눌 수 있다고 봐서 "존재합/니다" 처럼 단어 중간에서 끊음
+	 * (파워포인트는 단어 단위). 그래서 그리기 전에 줄을 넘는 곳 앞의 빈칸을 줄바꿈으로 바꿔 둠.
+	 * 빈칸 없는 아주 긴 단어는 그대로 둠 (POI 가 알아서 자름)
+	 */
+	static void wrapAtSpaces(List<? extends XSLFShape> shapes) {
+		for (XSLFShape sh : shapes) {
+			if (sh instanceof XSLFGroupShape gr) wrapAtSpaces(gr.getShapes());
+			if (!(sh instanceof XSLFTextShape ts) || !ts.getWordWrap() || ts.getAnchor() == null) continue;
+			double box = ts.getAnchor().getWidth() - ts.getLeftInset() - ts.getRightInset();
+			for (XSLFTextParagraph p : ts.getTextParagraphs()) {
+				if (!HANGUL.matcher(p.getText()).find()) continue;
+				double indent = Math.max(0, nz(p.getIndent()));
+				wrapParagraph(p, (box - nz(p.getLeftMargin()) - nz(p.getRightMargin()) - indent) * FILL);
+			}
+		}
+	}
+
+	private static final java.util.regex.Pattern HANGUL = java.util.regex.Pattern.compile("[\\uac00-\\ud7af]");
+
+	private static void wrapParagraph(XSLFTextParagraph p, double avail) {
+		if (avail <= 0) return;
+		double lineW = 0;
+		XSLFTextRun spaceRun = null; // 이번 줄의 마지막 빈칸 자리
+		int spaceIdx = -1;
+		double afterSpace = 0; // 그 빈칸 뒤 글자 폭
+		for (XSLFTextRun r : p.getTextRuns()) {
+			String t = r.getRawText();
+			if (t == null) continue;
+			if ("\n".equals(t)) { // 줄 나눔(a:br)
+				lineW = 0;
+				spaceRun = null;
+				continue;
+			}
+			Font f = new Font(r.getFontFamily() == null ? Font.DIALOG : r.getFontFamily(), r.isBold() ? Font.BOLD : Font.PLAIN, 1)
+					.deriveFont((float) (r.getFontSize() == null ? 18 : r.getFontSize()));
+			for (int i = 0; i < t.length(); i++) {
+				char c = t.charAt(i);
+				if (c == '\n') {
+					lineW = 0;
+					spaceRun = null;
+					continue;
+				}
+				double cw = f.getStringBounds(String.valueOf(c), FRC).getWidth();
+				if (c == ' ') {
+					spaceRun = r;
+					spaceIdx = i;
+					afterSpace = 0;
+					lineW += cw;
+					continue;
+				}
+				lineW += cw;
+				afterSpace += cw;
+				if (lineW > avail && spaceRun != null) {
+					String s = spaceRun.getRawText();
+					spaceRun.setText(s.substring(0, spaceIdx) + "\n" + s.substring(spaceIdx + 1));
+					if (spaceRun == r) t = r.getRawText();
+					lineW = afterSpace;
+					spaceRun = null;
+				}
+			}
+		}
+	}
+
+	private static double nz(Double d) {
+		return d == null ? 0 : d;
 	}
 
 	private static BufferedImage draw(XSLFSlide s, int w, int h, double k) {

@@ -79,12 +79,19 @@ describe('fillTemplate: 서식 채우기', () => {
     expect(slides[0].xml).toContain('sz="4000"');
     expect(slides[0].xml).not.toContain('{');
   });
-  it("채운 문단은 '한글 단어 잘림 허용'을 꺼서 단어 중간에서 줄이 안 바뀜", async () => {
-    const xml = slide('<p:sp><p:txBody><a:bodyPr/><a:p><a:pPr latinLnBrk="1"/><a:r><a:rPr sz="4000"/><a:t>{사명선언문}</a:t></a:r></a:p>'
+  it("채운 문단은 '한글 단어 잘림 허용'을 꺼서 단어 중간에서 줄이 안 바뀜 (글상자 기본값에 켜져 있어도)", async () => {
+    const xml = slide('<p:sp><p:txBody><a:bodyPr/><a:lstStyle><a:lvl1pPr latinLnBrk="1"/></a:lstStyle>'
+      + '<a:p><a:r><a:rPr sz="4000"/><a:t>{말씀}</a:t></a:r></a:p>'
       + '<a:p><a:pPr latinLnBrk="1"/><a:r><a:t>고정 글</a:t></a:r></a:p></p:txBody></p:sp>');
-    const { slides } = await readSlides(await fillTemplate(await makePptx([{ xml }]), { 사명선언문: '우리는 하나님 나라 확장을' }));
-    expect(slides[0].xml.match(/latinLnBrk="0"/g)).toHaveLength(1);
-    expect(slides[0].xml.match(/latinLnBrk="1"/g)).toHaveLength(1); // 자리 표시 없는 문단은 서식 그대로
+    const { slides } = await readSlides(await fillTemplate(await makePptx([{ xml }]), { 말씀: '요한복음 3장 16절' }));
+    expect(slides[0].xml).toMatch(/<a:p><a:pPr latinLnBrk="0"\/><a:r>/); // pPr 은 문단 맨 앞
+    expect(slides[0].xml.match(/latinLnBrk="1"/g)).toHaveLength(2); // 글상자 기본값·자리 표시 없는 문단은 서식 그대로
+  });
+  it('사명선언문은 가운데 정렬이어도 왼쪽 정렬로, 다른 칸은 서식 정렬 그대로', async () => {
+    const para = (t) => `<a:p><a:pPr algn="ctr"/><a:r><a:t>${t}</a:t></a:r></a:p>`;
+    const xml = slide(`<p:sp><p:txBody><a:bodyPr/>${para('{사명선언문}')}${para('{표어}')}</p:txBody></p:sp>`);
+    const { slides } = await readSlides(await fillTemplate(await makePptx([{ xml }]), { 사명선언문: '우리는', 표어: '앞서' }));
+    expect(slides[0].xml.match(/algn="[a-z]+"/g)).toEqual(['algn="l"', 'algn="ctr"']);
   });
 
   it('교회소식이 길면 화면을 복사해 이어서, 원래 화면 바로 뒤에 끼움', async () => {
@@ -200,6 +207,14 @@ describe('growAutoFitBoxes: 글에 맞춰 크기 조정 상자의 높이', () =>
     const d = doc(sp(true, true, ['가'.repeat(60)])); // 24pt 글자 60개 ≈ 1440pt, 상자 폭 ≈ 703pt → 3줄
     growAutoFitBoxes(d);
     expect(cy(d)).toBeGreaterThan(3 * 40 * 12700);
+  });
+  it('한 문단 안 줄 나눔(a:br)도 줄마다 따로 셈', () => {
+    const br = `<a:br><a:rPr sz="2400"/></a:br>`;
+    const run = (t) => `<a:r><a:rPr sz="2400"/><a:t>${t}</a:t></a:r>`;
+    const xml = sp(true, true, ['x']).replace(/<a:r>.*<\/a:r>/, ['가'.repeat(10), '나'.repeat(10), '다'.repeat(10), '라'.repeat(10)].map(run).join(br));
+    const d = doc(xml); // 짧은 4줄: 합치면 1줄이지만 4줄
+    growAutoFitBoxes(d);
+    expect(cy(d)).toBeGreaterThan(4 * 40 * 12700);
   });
 });
 

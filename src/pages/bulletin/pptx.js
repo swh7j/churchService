@@ -11,6 +11,8 @@ const XML_HEAD = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n';
 
 export const NEWS_KEY = '교회소식';
 const PH = /\{([^{}\n]{1,40})\}/g;
+// 왼쪽 정렬로 바꿀 긴 글 자리 표시
+const LEFT_KEYS = ['사명선언문'];
 // 교회소식 한 화면에 넣을 양 (넘치면 화면을 복사해 이어서)
 const NEWS_PER_SLIDE = 3;
 // 4:3 화면에 20pt 글자 기준, 150자면 아래로 넘치거나 옆 그림과 겹쳐서 100자로 줄임
@@ -23,6 +25,15 @@ const serialize = (doc) => {
 };
 const els = (node, ns, tag) => [...node.getElementsByTagNameNS(ns, tag)];
 const paraText = (p) => els(p, A, 't').map((t) => t.textContent).join('');
+/** 문단 안 줄들 (줄 나눔 a:br 기준) */
+function paraLines(p) {
+  const out = [''];
+  for (const n of p.childNodes) {
+    if (n.localName === 'br') out.push('');
+    else if (n.localName === 'r' || n.localName === 'fld') out[out.length - 1] += els(n, A, 't').map((t) => t.textContent).join('');
+  }
+  return out;
+}
 
 async function loadZip(buf) {
   const { default: JSZip } = await import('jszip');
@@ -85,9 +96,9 @@ function setParaText(p, text) {
   // 기존 글자 조각·줄 나눔·필드 제거
   [...p.childNodes].filter((n) => n.namespaceURI === A && ['r', 'br', 'fld'].includes(n.localName)).forEach((n) => n.remove());
   const end = els(p, A, 'endParaRPr')[0] || null;
-  // 서식에 '한글 단어 잘림 허용'(latinLnBrk)이 켜져 있으면 긴 글이 단어 중간에서 끊김 → 끄고 단어 단위로 줄바꿈
-  const pPr = [...p.children].find((c) => c.localName === 'pPr');
-  if (pPr?.getAttribute('latinLnBrk') === '1') pPr.setAttribute('latinLnBrk', '0');
+  // 서식(문단 또는 글상자 기본값)에 '한글 단어 잘림 허용'(latinLnBrk)이 켜져 있으면 긴 글이 단어 중간에서 끊김
+  // → 문단에 꺼 두어 단어 단위로 줄바꿈 (문단 설정이 글상자 기본값보다 우선)
+  pPrOf(p).setAttribute('latinLnBrk', '0');
   String(text)
     .split('\n')
     .forEach((line, i) => {
@@ -103,6 +114,16 @@ function setParaText(p, text) {
       r.appendChild(t);
       p.insertBefore(r, end);
     });
+}
+
+/** 문단 설정(a:pPr). 없으면 맨 앞에 만듦 */
+function pPrOf(p) {
+  let pPr = [...p.children].find((c) => c.localName === 'pPr');
+  if (!pPr) {
+    pPr = p.ownerDocument.createElementNS(A, 'a:pPr');
+    p.insertBefore(pPr, p.firstChild);
+  }
+  return pPr;
 }
 
 // endParaRPr 를 글꼴로 쓸 때는 이름만 rPr 로 바꿔 복사
@@ -203,7 +224,8 @@ function textHeight(sp, { body, ext }) {
       : pts && els(pts, A, 'spcPct')[0] ? pt * 1.2 * num(els(pts, A, 'spcPct')[0], 'val', 100000) / 100000
         : pt * 1.2;
     const gap = (tag) => { const s = pPr && els(pPr, A, tag)[0]; const v = s && els(s, A, 'spcPts')[0]; return v ? num(v, 'val', 0) / 100 : 0; };
-    const lines = Math.max(1, Math.ceil(textWidth(paraText(p), pt) / innerW));
+    // 직접 바꾼 줄마다 따로, 폭을 넘으면 그 줄이 여러 줄로
+    const lines = paraLines(p).reduce((n, line) => n + Math.max(1, Math.ceil(textWidth(line, pt) / innerW)), 0);
     h += lines * lineH + gap('spcBef') + gap('spcAft');
   }
   // 그리는 프로그램마다 첫 줄 위치가 조금씩 달라서 10% 여유
@@ -287,6 +309,8 @@ export async function fillTemplate(buf, values, inserts = {}, background = null)
       const text = paraText(p);
       const out = text.replace(PH, (m, k) => fill(k.trim()));
       if (out !== text) setParaText(p, out);
+      // 사명선언문은 여러 줄 긴 글이라 가운데 정렬이면 읽기 어려움 → 왼쪽 정렬
+      if (LEFT_KEYS.some((k) => text.includes(`{${k}}`))) pPrOf(p).setAttribute('algn', 'l');
     }
     const grew = growAutoFitBoxes(doc);
     const centered = centerShortText(doc, slideW, slideH);
