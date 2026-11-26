@@ -19,7 +19,7 @@ function copy(text) {
 
 /** 새 교회 담당자에게 보낼 안내 글 */
 const guide = (c) =>
-  `[${c.name}] 교회 관리 시스템 안내\n\n관리자 화면: ${siteUrl(c.code, true)}\n등록 코드: ${c.setup_code}\n\n관리자 화면에 들어가서 등록 코드와 함께 관리자 계정(아이디·비밀번호)을 만들어 주세요.\n성도 화면: ${siteUrl(c.code)}`;
+  `[${c.name}] 교회 관리 시스템 안내\n\n관리자 화면: ${siteUrl(c.code, true)}\n등록 코드: ${c.setup_code}\n\n관리자 화면에 들어가서 등록 코드와 함께 관리자 계정(아이디·비밀번호)을 만들어 주세요.\n성도 화면: ${siteUrl(c.code)}\n\n처음 하실 일\n1. 주보 → 주보 기본 정보에 표어·사명선언문·담임목사 등을 넣어 주세요. 종이 주보와 예배 PPT에 같이 들어갑니다.\n2. 예배 PPT는 공통 양식으로 바로 만들 수 있고, 교회 양식이 있으면 올려서 쓸 수 있습니다.\n3. 휴대폰에서는 '휴대폰 확인용 PDF' 버튼으로 잘 만들어졌는지 먼저 확인해 주세요.`;
 
 export default function Churches() {
   const { rows, reload } = useList('/platform/churches');

@@ -349,7 +349,7 @@ export default function WorshipPpt({ b, fixed }) {
       )}
       {err && <p className="warn">{err}</p>}
       {info && !info.name && common?.size ? (
-        <p className="muted small">처음이라면 <strong>공통 양식 받기</strong>로 기본 서식을 받아, 파워포인트에서 교회 이름·배경을 고친 뒤 (표어·사명선언문은 주보 고정 정보에서 자동으로 채움) <strong>서식 올리기</strong>로 올려 주세요.</p>
+        <p className="muted small">처음이라면 <strong>공통 양식 받기</strong>로 기본 서식을 받아, 파워포인트에서 교회 이름·배경을 고친 뒤 (표어·사명선언문은 주보 기본 정보에서 자동으로 채움) <strong>서식 올리기</strong>로 올려 주세요.</p>
       ) : null}
 
       {info?.name && loading && <p className="muted">서식 PPT를 읽는 중…</p>}
@@ -411,7 +411,7 @@ export default function WorshipPpt({ b, fixed }) {
           <li>같은 이름이 두 번 나오면 <code>{'{찬송2}'}</code>, <code>{'{찬송2 제목}'}</code> 처럼 번호를 붙입니다.</li>
           <li><code>{'{교회소식}'}</code> 만 쓴 줄은 소식 항목으로 채우고, 많으면 화면을 늘려 3개씩 나눕니다.</li>
           <li>그 밖에 <code>{'{날짜}'}</code>, <code>{'{설교제목}'}</code>, <code>{'{본문}'}</code>, <code>{'{설교자}'}</code> 를 쓸 수 있습니다.</li>
-          <li><code>{'{표어}'}</code>, <code>{'{사명선언문}'}</code>, <code>{'{비전}'}</code>, <code>{'{담임목사}'}</code> 는 주보 고정 정보에 적어 둔 내용으로 채웁니다. 표어가 바뀌면 주보 고정 정보만 고치면 됩니다.</li>
+          <li><code>{'{표어}'}</code>, <code>{'{사명선언문}'}</code>, <code>{'{비전}'}</code>, <code>{'{담임목사}'}</code> 는 주보 기본 정보에 적어 둔 내용으로 채웁니다. 표어가 바뀌면 주보 기본 정보만 고치면 됩니다.</li>
           <li>옛날 형식(.ppt)은 '다른 이름으로 저장 → PowerPoint 프레젠테이션(*.pptx)'으로 바꿔 올려 주세요.</li>
         </ul>
       </details>

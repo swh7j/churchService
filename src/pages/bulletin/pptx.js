@@ -85,6 +85,9 @@ function setParaText(p, text) {
   // 기존 글자 조각·줄 나눔·필드 제거
   [...p.childNodes].filter((n) => n.namespaceURI === A && ['r', 'br', 'fld'].includes(n.localName)).forEach((n) => n.remove());
   const end = els(p, A, 'endParaRPr')[0] || null;
+  // 서식에 '한글 단어 잘림 허용'(latinLnBrk)이 켜져 있으면 긴 글이 단어 중간에서 끊김 → 끄고 단어 단위로 줄바꿈
+  const pPr = [...p.children].find((c) => c.localName === 'pPr');
+  if (pPr?.getAttribute('latinLnBrk') === '1') pPr.setAttribute('latinLnBrk', '0');
   String(text)
     .split('\n')
     .forEach((line, i) => {

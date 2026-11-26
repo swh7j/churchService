@@ -79,6 +79,13 @@ describe('fillTemplate: 서식 채우기', () => {
     expect(slides[0].xml).toContain('sz="4000"');
     expect(slides[0].xml).not.toContain('{');
   });
+  it("채운 문단은 '한글 단어 잘림 허용'을 꺼서 단어 중간에서 줄이 안 바뀜", async () => {
+    const xml = slide('<p:sp><p:txBody><a:bodyPr/><a:p><a:pPr latinLnBrk="1"/><a:r><a:rPr sz="4000"/><a:t>{사명선언문}</a:t></a:r></a:p>'
+      + '<a:p><a:pPr latinLnBrk="1"/><a:r><a:t>고정 글</a:t></a:r></a:p></p:txBody></p:sp>');
+    const { slides } = await readSlides(await fillTemplate(await makePptx([{ xml }]), { 사명선언문: '우리는 하나님 나라 확장을' }));
+    expect(slides[0].xml.match(/latinLnBrk="0"/g)).toHaveLength(1);
+    expect(slides[0].xml.match(/latinLnBrk="1"/g)).toHaveLength(1); // 자리 표시 없는 문단은 서식 그대로
+  });
 
   it('교회소식이 길면 화면을 복사해 이어서, 원래 화면 바로 뒤에 끼움', async () => {
     const buf = await makePptx([
