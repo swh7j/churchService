@@ -1,5 +1,6 @@
 // '홈 화면에 앱 추가' 버튼 + 기기별 안내 (안드로이드는 바로 설치, 아이폰·카카오톡은 방법 안내)
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { installMode, onInstallChange, promptInstall } from './pwa';
 
 const GUIDES = {
@@ -50,14 +51,16 @@ export default function InstallApp({ variant = 'card', label = '홈 화면에 �
       ) : (
         <button className="install-link" onClick={click}>📱 {label}</button>
       )}
-      {guide && (
+      {/* 관리자 메뉴(사이드바) 안에서 열면 메뉴 폭에 잘리므로 화면 맨 바깥(body)에 그림 */}
+      {guide && createPortal(
         <div className="install-guide" role="dialog" aria-label={guide.title} onClick={(e) => e.target === e.currentTarget && setGuide(null)}>
           <div className="install-box">
             <h3>{guide.title}</h3>
             <ol>{guide.steps.map((s, i) => <li key={i}>{s}</li>)}</ol>
             <button className="pub-btn small" onClick={() => setGuide(null)}>알겠어요</button>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );
