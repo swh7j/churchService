@@ -147,6 +147,19 @@ function fillNews(p, items) {
   });
 }
 
+/** 문단 p 가 든 글상자를 화면 폭 W 에서 왼쪽 여백과 같은 오른쪽 여백만 남기고 넓힘 */
+function widenBox(p, W) {
+  let sp = p.parentNode;
+  while (sp && !(sp.namespaceURI === P && sp.localName === 'sp')) sp = sp.parentNode;
+  const xfrm = sp && els(sp, A, 'xfrm')[0];
+  const off = xfrm && els(xfrm, A, 'off')[0];
+  const ext = xfrm && els(xfrm, A, 'ext')[0];
+  if (!off || !ext) return;
+  const x = Math.max(0, Number(off.getAttribute('x')) || 0);
+  const cx = W - 2 * x;
+  if (x < W / 4 && cx > Number(ext.getAttribute('cx'))) ext.setAttribute('cx', String(cx));
+}
+
 /**
  * 서식(buf)에 값(values)을 채운 새 .pptx Blob.
  * values: { '영광송': '62장', '영광송 제목': '고요히 머리숙여', ... , 교회소식: '1. …\n2. …' }
@@ -162,6 +175,7 @@ export async function fillTemplate(buf, values, inserts = {}, background = null)
   const extra = []; // [원래 슬라이드 경로, 새 슬라이드 경로]
   const done = new Set();
   const pics = []; // [슬라이드 경로, 그림들]
+  const slideW = Number((await zip.file('ppt/presentation.xml').async('string')).match(/<p:sldSz[^>]*\bcx="(\d+)"/)?.[1] || 9144000);
   let nextNo = Math.max(0, ...Object.keys(zip.files).map((f) => Number(f.match(/^ppt\/slides\/slide(\d+)\.xml$/)?.[1] || 0))) + 1;
 
   for (const path of paths) {
@@ -189,6 +203,8 @@ export async function fillTemplate(buf, values, inserts = {}, background = null)
       continue;
     }
     // 교회소식: 첫 화면은 이 슬라이드, 넘치는 만큼 슬라이드를 복사
+    // 배경 그림을 바꿨으면 서식 배경의 그림을 피하려고 좁혀 둔 교회소식 상자를 좌우 여백이 같게 넓힘
+    if (background) widenBox(newsPara, slideW);
     const base = serialize(doc);
     newsPages.forEach((items, i) => {
       const d = parse(base);

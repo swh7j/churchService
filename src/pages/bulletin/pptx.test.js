@@ -121,6 +121,16 @@ describe('fillTemplate: 서식 채우기', () => {
     expect(Object.keys(zip.files).filter((f) => /^ppt\/slides\/slide\d+\.xml$/.test(f))).toHaveLength(5);
   });
 
+  it('배경 그림을 바꾸면 교회소식 상자를 좌우 여백이 같게 넓힘 (안 바꾸면 서식 그대로)', async () => {
+    const box = `<p:sp><p:spPr><a:xfrm><a:off x="160000" y="1300000"/><a:ext cx="5000000" cy="4700000"/></a:xfrm></p:spPr><p:txBody><a:bodyPr/><a:p><a:r><a:t>{${NEWS_KEY}}</a:t></a:r></a:p></p:txBody></p:sp>`;
+    const buf = await makePptx([{ xml: slide(box) }]);
+    const cx = (s) => s.xml.match(/<a:ext cx="(\d+)"/)[1];
+    const plain = await readSlides(await fillTemplate(buf, { [NEWS_KEY]: '1. 환영합니다' }));
+    expect(cx(plain.slides[0])).toBe('5000000');
+    const wide = await readSlides(await fillTemplate(buf, { [NEWS_KEY]: '1. 환영합니다' }, {}, { data: new Uint8Array() }));
+    expect(cx(wide.slides[0])).toBe(String(W - 2 * 160000));
+  });
+
   it('교회소식이 비어 있으면 화면은 그대로 두고 글만 지움', async () => {
     const buf = await makePptx([{ xml: slide(textBox([`{${NEWS_KEY}}`])) }]);
     const { slides } = await readSlides(await fillTemplate(buf, { [NEWS_KEY]: '' }));

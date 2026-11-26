@@ -79,6 +79,17 @@ export function lookup(key, b, rows, hymns) {
 }
 
 // 만든 시각을 붙여 이름이 겹치지 않게 함 (아이폰 미리보기는 이름이 같으면 예전 파일 화면을 섞어 보여 줌)
+/** Blob 을 파일로 내려받음 */
+function save(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+}
+
 const fileName = (date) => {
   const t = new Date();
   const hm = [t.getHours(), t.getMinutes(), t.getSeconds()].map((n) => String(n).padStart(2, '0')).join('');
@@ -193,43 +204,60 @@ export default function WorshipPpt({ b }) {
     }
   };
 
+  // 비어 있는 칸은 화면에 '찬송가' 같은 앞 글자만 남으므로 먼저 알려 줌
+  const okEmpty = () => !empty.length || window.confirm(`비어 있는 칸이 있습니다: ${empty.map((k) => `{${k}}`).join(', ')}\n주보에 값이 없으면 그 화면에는 글자가 나오지 않습니다. 이대로 만들까요?`);
+
+  /** 주보 내용을 채운 .pptx Blob */
+  const build = async () => {
+    // 입력한 찬송 제목은 다음에 자동으로 채우도록 저장
+    const next = { ...hymns };
+    keys.filter((k) => / 제목$/.test(k)).forEach((k) => {
+      const n = String(values[k.replace(/\s*제목$/, '')] || '').match(/(\d+)\s*장/)?.[1];
+      if (n && values[k]?.trim()) next[n] = values[k].trim();
+    });
+    if (JSON.stringify(next) !== JSON.stringify(hymns)) {
+      await api.put('/worship-ppt/hymns', { hymns: JSON.stringify(next) }).catch(() => {});
+    }
+    // 공용 보관함의 악보·교독문·찬양 그림을 받아 해당 화면 뒤에 넣음
+    const inserts = {};
+    for (const { key, t } of targets) {
+      if (skip[key] || !t.items.some((it) => lib[libKey(it)])) continue;
+      inserts[key] = await loadPics(t);
+    }
+    // 배경 그림을 올려 두었으면 서식의 배경을 그 그림으로 바꿈
+    let background = null;
+    if (info?.background_at) {
+      const res = await fetch(withChurch('/api/worship-ppt/background'));
+      if (!res.ok) throw new Error('배경 그림을 받지 못했습니다. 다시 눌러 주세요.');
+      background = { data: new Uint8Array(await res.arrayBuffer()) };
+    }
+    return fillTemplate(buf, values, inserts, background);
+  };
+
   const make = async () => {
-    // 비어 있는 칸은 화면에 '찬송가' 같은 앞 글자만 남으므로 먼저 알려 줌
-    if (empty.length && !window.confirm(`비어 있는 칸이 있습니다: ${empty.map((k) => `{${k}}`).join(', ')}\n주보에 값이 없으면 그 화면에는 글자가 나오지 않습니다. 이대로 만들까요?`)) return;
+    if (!okEmpty()) return;
     setBusy('PPT 만드는 중…');
     try {
-      // 입력한 찬송 제목은 다음에 자동으로 채우도록 저장
-      const next = { ...hymns };
-      keys.filter((k) => / 제목$/.test(k)).forEach((k) => {
-        const n = String(values[k.replace(/\s*제목$/, '')] || '').match(/(\d+)\s*장/)?.[1];
-        if (n && values[k]?.trim()) next[n] = values[k].trim();
-      });
-      if (JSON.stringify(next) !== JSON.stringify(hymns)) {
-        await api.put('/worship-ppt/hymns', { hymns: JSON.stringify(next) }).catch(() => {});
-      }
-      // 공용 보관함의 악보·교독문·찬양 그림을 받아 해당 화면 뒤에 넣음
-      const inserts = {};
-      for (const { key, t } of targets) {
-        if (skip[key] || !t.items.some((it) => lib[libKey(it)])) continue;
-        inserts[key] = await loadPics(t);
-      }
-      // 배경 그림을 올려 두었으면 서식의 배경을 그 그림으로 바꿈
-      let background = null;
-      if (info?.background_at) {
-        const res = await fetch(withChurch('/api/worship-ppt/background'));
-        if (!res.ok) throw new Error('배경 그림을 받지 못했습니다. 다시 눌러 주세요.');
-        background = { data: new Uint8Array(await res.arrayBuffer()) };
-      }
-      const blob = await fillTemplate(buf, values, inserts, background);
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = fileName(b.date);
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+      save(await build(), fileName(b.date));
     } catch (x) {
       alert('PPT를 만들지 못했습니다. ' + x.message);
+    } finally {
+      setBusy('');
+    }
+  };
+
+  /** 휴대폰 확인용: 같은 PPT 를 서버에서 화면 그림으로 그린 PDF (아이폰 기본 미리보기는 PPT 를 겹치거나 빠뜨려 보여 줌) */
+  const makePdf = async () => {
+    if (!okEmpty()) return;
+    setBusy('PDF 만드는 중… (30초쯤 걸릴 수 있습니다)');
+    try {
+      const pptx = await build();
+      const res = await fetch(withChurch('/api/worship-ppt/pdf'), { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body: pptx });
+      if (!res.ok) throw new Error((await res.json().catch(() => null))?.error || '다시 눌러 주세요.');
+      save(await res.blob(), fileName(b.date).replace(/\.pptx$/, '.pdf'));
+    } catch (x) {
+      const lost = x.message === 'Load failed' || x.message === 'Failed to fetch';
+      alert('PDF를 만들지 못했습니다. ' + (lost ? '인터넷 연결을 확인하고 다시 눌러 주세요.' : x.message));
     } finally {
       setBusy('');
     }
@@ -351,7 +379,9 @@ export default function WorshipPpt({ b }) {
           )}
           <div className="form-actions">
             <button className="btn primary" onClick={make} disabled={!buf || !!busy}>{busy || 'PPT 만들기 (.pptx 받기)'}</button>
+            <button className="btn" onClick={makePdf} disabled={!buf || !!busy}>휴대폰 확인용 PDF</button>
           </div>
+          <p className="muted small">아이폰에서 PPT 를 바로 누르면 화면이 겹치거나 빠져 보일 수 있습니다. 휴대폰으로 확인할 때는 PDF 로 보거나 PPT 를 Keynote·PowerPoint 앱으로 열어 주세요.</p>
         </>
       )}
       {busy && !info?.name && <p className="muted">{busy}</p>}

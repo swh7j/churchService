@@ -10,6 +10,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -126,6 +127,14 @@ public class WorshipPptController {
 				+ "ON CONFLICT(id) DO UPDATE SET file = excluded.file, updated_at = excluded.updated_at", file);
 		audit.log("예배 PPT 배경 변경", "worship_ppt_bg", 1L, Api.map("size", file.length));
 		return info();
+	}
+
+	/** 만든 PPT 를 휴대폰 확인용 PDF 로: 화면에서 만든 .pptx 내용을 그대로 body 로 받음 (저장하지 않음) */
+	@PostMapping(value = "/pdf", consumes = MediaType.APPLICATION_OCTET_STREAM_VALUE)
+	public ResponseEntity<byte[]> pdf(@RequestBody byte[] file) {
+		if (file.length > MAX_BYTES) throw ApiException.bad("PPT 파일이 너무 큽니다.");
+		if (file.length < 4 || file[0] != 'P' || file[1] != 'K') throw ApiException.bad(".pptx 파일이 아닙니다.");
+		return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).cacheControl(CacheControl.noStore()).body(PptPdf.render(file));
 	}
 
 	/** 배경 그림 빼기 (서식에 들어 있는 원래 배경으로) */

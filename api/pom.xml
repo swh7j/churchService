@@ -57,6 +57,12 @@
 			<artifactId>poi-scratchpad</artifactId>
 			<version>5.4.1</version>
 		</dependency>
+		<!-- 만든 예배 PPT(.pptx)를 화면 그림으로 그려 휴대폰 확인용 PDF 로 -->
+		<dependency>
+			<groupId>org.apache.poi</groupId>
+			<artifactId>poi-ooxml</artifactId>
+			<version>5.4.1</version>
+		</dependency>
 		<!-- 테스트 (JUnit 5, AssertJ, Spring 테스트) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

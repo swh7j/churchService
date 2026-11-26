@@ -33,7 +33,8 @@ timedatectl set-timezone Asia/Seoul || true
 say "2/6" "필요한 프로그램 설치 (Java 17, Caddy 웹서버)"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update -y -q
-apt-get install -y -q openjdk-17-jre-headless curl ca-certificates gnupg
+# fonts-nanum: 예배 PPT 를 PDF 로 그릴 때 한글 글꼴
+apt-get install -y -q openjdk-17-jre-headless curl ca-certificates gnupg fontconfig fonts-nanum
 
 if ! command -v caddy >/dev/null 2>&1; then
   # Caddy 공식 저장소 (HTTPS 인증서를 자동으로 받아주는 웹서버)
