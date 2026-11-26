@@ -1,7 +1,7 @@
 // 4면 주보 인쇄 화면: A4 가로 2장 (바깥면: 교회소식 | 표지, 안쪽면: 주일낮예배 | 오후·수요예배)
 // 2026년 수암제일교회 주보 양식: 붓글씨 제목, 점선 예배 순서, 두 칸 오후·수요예배, 회색 표 봉사표
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { dotDate, volWeek } from './layout';
+import { dotDate, safeImg, volWeek } from './layout';
 import './bulletin.css';
 
 const lines = (s) => (s || '').split('\n');
@@ -158,9 +158,9 @@ function CoverPanel({ b, t, church, vw }) {
         <span>{vw.vol ? `제 ${vw.vol}권 ${vw.week}주` : vw.week ? `제 ${vw.week}주` : ''}</span>
         <span>{dotDate(b.date)}</span>
       </div>
-      <div className="bp-cover-photo">{t.coverPhoto && <img src={t.coverPhoto} alt="" />}</div>
+      <div className="bp-cover-photo">{safeImg(t.coverPhoto) && <img src={safeImg(t.coverPhoto)} alt="" />}</div>
       <div className="bp-cover-name">
-        {t.logo && <img className="bp-logo" src={t.logo} alt="" />}
+        {safeImg(t.logo) && <img className="bp-logo" src={safeImg(t.logo)} alt="" />}
         {t.denomination && <Denom text={t.denomination} />}
         <span className="bp-church">{t.churchName || church}</span>
       </div>

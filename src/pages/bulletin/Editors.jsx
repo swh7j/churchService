@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { api } from '../../api';
 import { askConfirm } from '../../components';
-import { deriveSummary, newsToAnnouncements, shrinkImage, volWeek } from './layout';
+import { deriveSummary, newsToAnnouncements, safeImg, shrinkImage, volWeek } from './layout';
 import './bulletin.css';
 
 const upd = (obj, path, value) => {
@@ -293,7 +293,7 @@ export function TemplateEditor({ initial, onSave, onCancel }) {
         <div className="field full">
           <label>표지 사진</label>
           <div className="be-inline">
-            {t.coverPhoto && <img src={t.coverPhoto} alt="표지 사진" className="be-thumb" />}
+            {safeImg(t.coverPhoto) && <img src={safeImg(t.coverPhoto)} alt="표지 사진" className="be-thumb" />}
             <input type="file" accept="image/*" onChange={pickPhoto} />
             {t.coverPhoto && <button type="button" className="btn sm danger" onClick={() => set('coverPhoto')('')}>사진 빼기</button>}
           </div>
@@ -302,7 +302,7 @@ export function TemplateEditor({ initial, onSave, onCancel }) {
         <div className="field full">
           <label>교단 로고 (교회 이름 왼쪽)</label>
           <div className="be-inline">
-            {t.logo && <img src={t.logo} alt="교단 로고" className="be-logo" />}
+            {safeImg(t.logo) && <img src={safeImg(t.logo)} alt="교단 로고" className="be-logo" />}
             <input type="file" accept="image/*" onChange={pickLogo} />
             {t.logo && <button type="button" className="btn sm danger" onClick={() => set('logo')('')}>로고 빼기</button>}
           </div>

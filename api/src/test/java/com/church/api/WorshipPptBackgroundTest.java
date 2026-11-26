@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 /** 예배 PPT 배경 그림: 관리자가 올리면 PPT 만들 때 서식의 배경을 이 그림으로 바꿈 */
 class WorshipPptBackgroundTest extends IntegrationTest {
 
-	private static final byte[] JPG = { (byte) 0xFF, (byte) 0xD8, (byte) 0xFF, (byte) 0xE0, 0, 0x10, 'J', 'F', 'I', 'F' };
+	private static final byte[] JPG = image("jpg");
 	private static final String OCTET = "application/octet-stream";
 
 	@Test

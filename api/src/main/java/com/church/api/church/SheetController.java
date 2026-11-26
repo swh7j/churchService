@@ -3,6 +3,7 @@ package com.church.api.church;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.church.api.audit.AuditService;
 import com.church.api.common.Api;
 import com.church.api.common.ApiException;
+import com.church.api.common.Uploads;
 
 /**
  * 악보. 관리자 화면에서 여러 장을 세로로 이어 붙여 JPEG 한 장으로 올리고, 성도 화면에서 봅니다.
@@ -136,7 +138,7 @@ public class SheetController {
 		} catch (IllegalArgumentException e) {
 			throw ApiException.bad("사진을 읽지 못했습니다.");
 		}
-		if (b.length < 3 || (b[0] & 0xFF) != 0xFF || (b[1] & 0xFF) != 0xD8) throw ApiException.bad("JPEG 사진만 올릴 수 있습니다.");
+		Uploads.requireImage(b, Set.of(Uploads.JPEG), "JPEG 사진만 올릴 수 있습니다.");
 		return b;
 	}
 

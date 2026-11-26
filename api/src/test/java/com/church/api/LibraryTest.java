@@ -23,13 +23,13 @@ class LibraryTest extends IntegrationTest {
 
 	private Client platform;
 
-	/** 그림 n장이 든 zip (001.jpg …). 내용은 검사하지 않으므로 아무 바이트 */
+	/** 그림 n장이 든 zip (001.jpg …) */
 	static byte[] zip(int n) throws IOException {
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		try (ZipOutputStream z = new ZipOutputStream(out)) {
 			for (int i = 1; i <= n; i++) {
 				z.putNextEntry(new ZipEntry(String.format("%03d.jpg", i)));
-				z.write(new byte[] { (byte) 0xFF, (byte) 0xD8, (byte) i });
+				z.write(image("jpg"));
 				z.closeEntry();
 			}
 		}

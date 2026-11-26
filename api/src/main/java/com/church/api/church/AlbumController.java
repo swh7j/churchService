@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.util.Base64;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -32,6 +33,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import com.church.api.audit.AuditService;
 import com.church.api.common.Api;
 import com.church.api.common.ApiException;
+import com.church.api.common.Uploads;
 
 /**
  * 교회 앨범. 관리자가 행사 사진을 앨범으로 올리고, 성도 화면(교회 소식 → 교회 앨범)에서 봅니다.
@@ -262,7 +264,7 @@ public class AlbumController {
 		} catch (IllegalArgumentException e) {
 			throw ApiException.bad("사진을 읽지 못했습니다.");
 		}
-		if (b.length < 3 || (b[0] & 0xFF) != 0xFF || (b[1] & 0xFF) != 0xD8) throw ApiException.bad("JPEG 사진만 올릴 수 있습니다.");
+		Uploads.requireImage(b, Set.of(Uploads.JPEG), "JPEG 사진만 올릴 수 있습니다.");
 		return b;
 	}
 

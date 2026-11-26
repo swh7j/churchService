@@ -28,6 +28,7 @@ import com.church.api.auth.PasswordHasher;
 import com.church.api.auth.Roles;
 import com.church.api.common.Api;
 import com.church.api.common.ApiException;
+import com.church.api.common.Uploads;
 import com.church.api.tenant.ChurchRegistry.Church;
 import com.church.api.tenant.PlatformAuth.PlatformUser;
 
@@ -281,7 +282,7 @@ public class PlatformController {
 	public Map<String, Object> uploadCommonPpt(@RequestBody byte[] file, HttpServletRequest req) {
 		PlatformUser me = auth.require(req);
 		if (file.length > MAX_PPT) throw ApiException.bad("PPT 파일이 너무 큽니다.");
-		if (file.length < 4 || file[0] != 'P' || file[1] != 'K') throw ApiException.bad("파워포인트에서 'PowerPoint 프레젠테이션(*.pptx)'으로 저장한 파일을 올려 주세요.");
+		Uploads.requirePptx(file, "파워포인트에서 'PowerPoint 프레젠테이션(*.pptx)'으로 저장한 파일을 올려 주세요.");
 		Path f = commonPpt(churches);
 		try {
 			Files.createDirectories(f.getParent());

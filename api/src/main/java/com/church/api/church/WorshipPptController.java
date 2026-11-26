@@ -2,6 +2,7 @@ package com.church.api.church;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 import com.church.api.audit.AuditService;
 import com.church.api.common.Api;
 import com.church.api.common.ApiException;
+import com.church.api.common.Uploads;
 import com.church.api.tenant.ChurchRegistry;
 import com.church.api.tenant.PlatformController;
 
@@ -81,8 +83,8 @@ public class WorshipPptController {
 	@PutMapping(value = "/file", consumes = MediaType.APPLICATION_OCTET_STREAM_VALUE)
 	public Map<String, Object> upload(@RequestParam String name, @RequestBody byte[] file) {
 		if (file.length > MAX_BYTES) throw ApiException.bad("PPT 파일이 너무 큽니다. 찬송 악보 화면은 빼고 서식만 올려 주세요.");
-		// .pptx 는 zip 파일 (PK 로 시작). 옛날 .ppt 는 여기서 걸러짐
-		if (file.length < 4 || file[0] != 'P' || file[1] != 'K') throw ApiException.bad("파워포인트에서 'PowerPoint 프레젠테이션(*.pptx)'으로 저장한 파일을 올려 주세요.");
+		// .pptx 는 zip 안에 파워포인트 파일들이 든 것. 옛날 .ppt 나 다른 zip 은 여기서 걸러짐
+		Uploads.requirePptx(file, "파워포인트에서 'PowerPoint 프레젠테이션(*.pptx)'으로 저장한 파일을 올려 주세요.");
 		String n = name.trim().isEmpty() ? "서식.pptx" : name.trim();
 		if (n.length() > 200) n = n.substring(0, 200);
 		jdbc.update("INSERT INTO worship_ppt (id, name, file, updated_at) VALUES (1, ?, ?, datetime('now','localtime')) "
@@ -120,9 +122,7 @@ public class WorshipPptController {
 	@PutMapping(value = "/background", consumes = MediaType.APPLICATION_OCTET_STREAM_VALUE)
 	public Map<String, Object> uploadBackground(@RequestBody byte[] file) {
 		if (file.length > MAX_BG_BYTES) throw ApiException.bad("그림 파일이 너무 큽니다.");
-		boolean jpg = file.length > 3 && (file[0] & 0xff) == 0xFF && (file[1] & 0xff) == 0xD8;
-		boolean png = file.length > 3 && (file[0] & 0xff) == 0x89 && file[1] == 'P' && file[2] == 'N' && file[3] == 'G';
-		if (!jpg && !png) throw ApiException.bad("jpg 나 png 그림을 올려 주세요.");
+		Uploads.requireImage(file, Set.of(Uploads.JPEG, Uploads.PNG), "jpg 나 png 그림을 올려 주세요.");
 		jdbc.update("INSERT INTO worship_ppt_bg (id, file, updated_at) VALUES (1, ?, datetime('now','localtime')) "
 				+ "ON CONFLICT(id) DO UPDATE SET file = excluded.file, updated_at = excluded.updated_at", file);
 		audit.log("예배 PPT 배경 변경", "worship_ppt_bg", 1L, Api.map("size", file.length));
@@ -133,7 +133,7 @@ public class WorshipPptController {
 	@PostMapping(value = "/pdf", consumes = MediaType.APPLICATION_OCTET_STREAM_VALUE)
 	public ResponseEntity<byte[]> pdf(@RequestBody byte[] file) {
 		if (file.length > MAX_BYTES) throw ApiException.bad("PPT 파일이 너무 큽니다.");
-		if (file.length < 4 || file[0] != 'P' || file[1] != 'K') throw ApiException.bad(".pptx 파일이 아닙니다.");
+		Uploads.requirePptx(file, ".pptx 파일이 아닙니다.");
 		return ResponseEntity.ok().contentType(MediaType.APPLICATION_PDF).cacheControl(CacheControl.noStore()).body(PptPdf.render(file));
 	}
 

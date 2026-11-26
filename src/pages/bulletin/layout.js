@@ -152,6 +152,11 @@ export function deriveSummary(layout) {
  * data: 주소 → 바이트. fetch(dataUrl) 은 서버 보안 설정(CSP connect-src 'self')에 막혀
  * "Load failed"(사파리) / "Failed to fetch"(크롬)가 나므로 직접 풂
  */
+/** 저장된 그림 주소가 data:image 그림일 때만 그대로 (다른 주소·스크립트는 그리지 않음) */
+export function safeImg(src) {
+  return typeof src === 'string' && /^data:image\/(jpeg|png|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(src) ? src : null;
+}
+
 export function dataUrlBytes(url) {
   const bin = atob(url.slice(url.indexOf(',') + 1));
   const out = new Uint8Array(bin.length);

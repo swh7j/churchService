@@ -22,6 +22,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 import com.church.api.common.ApiException;
+import com.church.api.common.Uploads;
 import com.church.api.tenant.ChurchRegistry;
 
 /**
@@ -223,6 +224,10 @@ public class SongLibrary {
 		try (ZipInputStream z = new ZipInputStream(new ByteArrayInputStream(file))) {
 			for (ZipEntry e; (e = z.getNextEntry()) != null;) {
 				if (!e.getName().matches("\\d{3}\\.(jpg|jpeg|png)")) throw ApiException.bad("jpg, png 그림만 넣을 수 있습니다.");
+				// 이름만 .jpg 인 다른 파일 거절: 내용 앞부분이 이름과 같은 형식이어야 함
+				String type = Uploads.imageType(z.readNBytes(8));
+				if (type == null || !type.equals(e.getName().endsWith(".png") ? Uploads.PNG : Uploads.JPEG))
+					throw ApiException.bad("jpg, png 그림만 넣을 수 있습니다.");
 				count++;
 			}
 		} catch (IOException e) {

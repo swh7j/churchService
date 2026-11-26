@@ -1,5 +1,7 @@
 package com.church.api;
 
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.CookieManager;
@@ -12,6 +14,8 @@ import java.net.http.HttpResponse.BodyHandlers;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
+
+import javax.imageio.ImageIO;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -68,6 +72,17 @@ public abstract class IntegrationTest {
 	 * 백업 만들기. 파일 이름이 초 단위라 다른 테스트(앨범 등)가 같은 초에 백업했으면 400 "방금 백업했습니다"가 남
 	 * (CI처럼 빠른 곳에서 가끔 실패하던 원인) → 다음 초까지 기다렸다 다시 만듦
 	 */
+	/** 진짜 그림 파일 (8x6, format: "jpg" 나 "png"). 올리기 검사가 내용을 실제로 읽어 보므로 가짜 바이트는 거절됨 */
+	protected static byte[] image(String format) {
+		try {
+			ByteArrayOutputStream out = new ByteArrayOutputStream();
+			ImageIO.write(new BufferedImage(8, 6, BufferedImage.TYPE_INT_RGB), format, out);
+			return out.toByteArray();
+		} catch (IOException e) {
+			throw new UncheckedIOException(e);
+		}
+	}
+
 	protected static String newBackup(Client a) {
 		Res r = a.post("/api/backups", Map.of());
 		if (r.status() == 400) {
