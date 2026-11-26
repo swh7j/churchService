@@ -165,34 +165,71 @@ function textWidth(text, pt) {
 export function growAutoFitBoxes(doc) {
   let grew = false;
   for (const sp of els(doc, P, 'sp')) {
-    const body = els(sp, A, 'bodyPr')[0];
-    const spPr = els(sp, P, 'spPr')[0];
-    const ext = spPr && els(spPr, A, 'ext').find((e) => e.hasAttribute('cy'));
-    if (!body || !ext || !els(body, A, 'spAutoFit').length) continue;
-    if (![...spPr.children].some((c) => c.localName === 'solidFill' || c.localName === 'gradFill' || c.localName === 'blipFill')) continue;
-    const innerW = (num(ext, 'cx', 0) - num(body, 'lIns', 91440) - num(body, 'rIns', 91440)) / EMU_PT;
-    if (innerW <= 0) continue;
-    let h = 0;
-    for (const p of els(sp, A, 'p')) {
-      const r = els(p, A, 'rPr')[0] || els(p, A, 'endParaRPr')[0];
-      const pt = num(r, 'sz', 1800) / 100;
-      const pPr = [...p.children].find((c) => c.localName === 'pPr');
-      const pts = pPr && els(pPr, A, 'lnSpc')[0];
-      const lineH = pts && els(pts, A, 'spcPts')[0] ? num(els(pts, A, 'spcPts')[0], 'val', 0) / 100
-        : pts && els(pts, A, 'spcPct')[0] ? pt * 1.2 * num(els(pts, A, 'spcPct')[0], 'val', 100000) / 100000
-          : pt * 1.2;
-      const gap = (tag) => { const s = pPr && els(pPr, A, tag)[0]; const v = s && els(s, A, 'spcPts')[0]; return v ? num(v, 'val', 0) / 100 : 0; };
-      const lines = Math.max(1, Math.ceil(textWidth(paraText(p), pt) / innerW));
-      h += lines * lineH + gap('spcBef') + gap('spcAft');
-    }
-    // 그리는 프로그램마다 첫 줄 위치가 조금씩 달라서 10% 여유
-    const cy = Math.round(h * 1.1 * EMU_PT + num(body, 'tIns', 45720) + num(body, 'bIns', 45720));
-    if (cy > num(ext, 'cy', 0) * 1.05) {
-      ext.setAttribute('cy', String(cy));
+    const box = autoFitBox(sp);
+    if (!box || !box.filled) continue;
+    const cy = textHeight(sp, box);
+    if (cy > num(box.ext, 'cy', 0) * 1.05) {
+      box.ext.setAttribute('cy', String(cy));
       grew = true;
     }
   }
   return grew;
+}
+
+/** '글에 맞춰 크기 조정' 글상자의 bodyPr·크기·칠 여부 (아니면 null) */
+function autoFitBox(sp) {
+  const body = els(sp, A, 'bodyPr')[0];
+  const spPr = els(sp, P, 'spPr')[0];
+  const ext = spPr && els(spPr, A, 'ext').find((e) => e.hasAttribute('cy'));
+  if (!body || !ext || !els(body, A, 'spAutoFit').length) return null;
+  const filled = [...spPr.children].some((c) => c.localName === 'solidFill' || c.localName === 'gradFill' || c.localName === 'blipFill');
+  return { body, ext, filled };
+}
+
+/** 글상자 안 글의 대략적인 높이(EMU, 위아래 안쪽 여백과 10% 여유 포함). 줄 수는 글자 폭으로 어림함 */
+function textHeight(sp, { body, ext }) {
+  const innerW = (num(ext, 'cx', 0) - num(body, 'lIns', 91440) - num(body, 'rIns', 91440)) / EMU_PT;
+  if (innerW <= 0) return 0;
+  let h = 0;
+  for (const p of els(sp, A, 'p')) {
+    const r = els(p, A, 'rPr')[0] || els(p, A, 'endParaRPr')[0];
+    const pt = num(r, 'sz', 1800) / 100;
+    const pPr = [...p.children].find((c) => c.localName === 'pPr');
+    const pts = pPr && els(pPr, A, 'lnSpc')[0];
+    const lineH = pts && els(pts, A, 'spcPts')[0] ? num(els(pts, A, 'spcPts')[0], 'val', 0) / 100
+      : pts && els(pts, A, 'spcPct')[0] ? pt * 1.2 * num(els(pts, A, 'spcPct')[0], 'val', 100000) / 100000
+        : pt * 1.2;
+    const gap = (tag) => { const s = pPr && els(pPr, A, tag)[0]; const v = s && els(s, A, 'spcPts')[0]; return v ? num(v, 'val', 0) / 100 : 0; };
+    const lines = Math.max(1, Math.ceil(textWidth(paraText(p), pt) / innerW));
+    h += lines * lineH + gap('spcBef') + gap('spcAft');
+  }
+  // 그리는 프로그램마다 첫 줄 위치가 조금씩 달라서 10% 여유
+  return Math.round(h * 1.1 * EMU_PT + num(body, 'tIns', 45720) + num(body, 'bIns', 45720));
+}
+
+/**
+ * 화면 가운데의 큰 글상자(흰 띠)에 짧은 글만 있으면 (찬송가 3장, 말씀강론 11, 표어 …) 글을 상자 세로 가운데로.
+ * 서식은 글이 상자 맨 위에 붙어 있음. 글이 상자 높이의 70% 를 넘는 긴 글(사명선언문 등)은 그대로 둠.
+ * 위아래의 빈 문단은 가운데가 어긋나므로 뺌. 바꿨으면 true
+ */
+export function centerShortText(doc, W, H) {
+  let changed = false;
+  for (const sp of els(doc, P, 'sp')) {
+    const box = autoFitBox(sp);
+    if (!box || num(box.ext, 'cx', 0) < W * 0.8 || num(box.ext, 'cy', 0) < H * 0.3) continue;
+    const paras = els(sp, A, 'p');
+    const blank = (p) => !paraText(p).trim();
+    if (paras.every(blank)) continue;
+    while (paras.length > 1 && blank(paras[0])) paras.shift().remove();
+    while (paras.length > 1 && blank(paras[paras.length - 1])) paras.pop().remove();
+    if (textHeight(sp, box) > num(box.ext, 'cy', 0) * 0.7) continue;
+    box.body.setAttribute('anchor', 'ctr');
+    // 크기를 글에 맞추면 띠가 줄어드므로 지금 크기로 고정
+    const fit = els(box.body, A, 'spAutoFit')[0];
+    fit.parentNode.replaceChild(doc.createElementNS(A, 'a:noAutofit'), fit);
+    changed = true;
+  }
+  return changed;
 }
 
 /** 문단 p 가 든 글상자를 화면 폭 W 에서 왼쪽 여백과 같은 오른쪽 여백만 남기고 넓힘 */
@@ -223,7 +260,9 @@ export async function fillTemplate(buf, values, inserts = {}, background = null)
   const extra = []; // [원래 슬라이드 경로, 새 슬라이드 경로]
   const done = new Set();
   const pics = []; // [슬라이드 경로, 그림들]
-  const slideW = Number((await zip.file('ppt/presentation.xml').async('string')).match(/<p:sldSz[^>]*\bcx="(\d+)"/)?.[1] || 9144000);
+  const presXml = await zip.file('ppt/presentation.xml').async('string');
+  const slideW = Number(presXml.match(/<p:sldSz[^>]*\bcx="(\d+)"/)?.[1] || 9144000);
+  const slideH = Number(presXml.match(/<p:sldSz[^>]*\bcy="(\d+)"/)?.[1] || 6858000);
   let nextNo = Math.max(0, ...Object.keys(zip.files).map((f) => Number(f.match(/^ppt\/slides\/slide(\d+)\.xml$/)?.[1] || 0))) + 1;
 
   for (const path of paths) {
@@ -247,8 +286,9 @@ export async function fillTemplate(buf, values, inserts = {}, background = null)
       if (out !== text) setParaText(p, out);
     }
     const grew = growAutoFitBoxes(doc);
+    const centered = centerShortText(doc, slideW, slideH);
     if (!newsPara) {
-      if (paras.length || grew) zip.file(path, serialize(doc));
+      if (paras.length || grew || centered) zip.file(path, serialize(doc));
       continue;
     }
     // 교회소식: 첫 화면은 이 슬라이드, 넘치는 만큼 슬라이드를 복사

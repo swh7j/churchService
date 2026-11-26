@@ -1,7 +1,7 @@
 // 예배 PPT 만들기 (서식 채우기 · 교회소식 나누기 · 배경 그림 찾기)
 import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
-import { NEWS_KEY, fillTemplate, findBackground, growAutoFitBoxes, splitNews, templateKeys } from './pptx';
+import { NEWS_KEY, centerShortText, fillTemplate, findBackground, growAutoFitBoxes, splitNews, templateKeys } from './pptx';
 
 const NS = 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
 const W = 9144000;
@@ -193,5 +193,32 @@ describe('growAutoFitBoxes: 글에 맞춰 크기 조정 상자의 높이', () =>
     const d = doc(sp(true, true, ['가'.repeat(60)])); // 24pt 글자 60개 ≈ 1440pt, 상자 폭 ≈ 703pt → 3줄
     growAutoFitBoxes(d);
     expect(cy(d)).toBeGreaterThan(3 * 40 * 12700);
+  });
+});
+
+describe('centerShortText: 큰 글상자에 짧은 글이면 세로 가운데', () => {
+  const H = 6858000;
+  const box = (cy, lines, cx = W) =>
+    `<p:sp><p:spPr><a:xfrm><a:off x="0" y="1900000"/><a:ext cx="${cx}" cy="${cy}"/></a:xfrm><a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill></p:spPr>` +
+    '<p:txBody><a:bodyPr><a:spAutoFit/></a:bodyPr>' +
+    lines.map((t) => `<a:p><a:r><a:rPr sz="4000"/><a:t>${t}</a:t></a:r></a:p>`).join('') +
+    '</p:txBody></p:sp>';
+  const doc = (xml) => new DOMParser().parseFromString(slide(xml), 'application/xml');
+  const A = 'http://schemas.openxmlformats.org/drawingml/2006/main';
+  const body = (d) => d.getElementsByTagNameNS(A, 'bodyPr')[0];
+
+  it('짧은 글은 가운데 정렬, 띠 크기는 고정, 앞뒤 빈 줄은 뺌', () => {
+    const d = doc(box(3200000, [' ', '11', ' ']));
+    expect(centerShortText(d, W, H)).toBe(true);
+    expect(body(d).getAttribute('anchor')).toBe('ctr');
+    expect(body(d).getElementsByTagNameNS(A, 'spAutoFit')).toHaveLength(0);
+    expect(body(d).getElementsByTagNameNS(A, 'noAutofit')).toHaveLength(1);
+    expect(d.getElementsByTagNameNS(A, 'p')).toHaveLength(1);
+  });
+  it('작은 상자에 긴 글(사명선언문처럼)이나 좁은 상자는 그대로', () => {
+    for (const d of [doc(box(730000, ['우리는 하나님 나라 확장을 최고의 가치로 여기며'])), doc(box(3200000, ['11'], W / 2))]) {
+      expect(centerShortText(d, W, H)).toBe(false);
+      expect(body(d).hasAttribute('anchor')).toBe(false);
+    }
   });
 });
