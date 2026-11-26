@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../api';
 import { withChurch } from '../../church';
 import { kdate } from '../../utils';
-import { parseLayout, shrinkImage } from './layout';
+import { dataUrlBytes, parseLayout, shrinkImage } from './layout';
 import { fillTemplate, NEWS_KEY, templateKeys, unpackImages } from './pptx';
 import { songKey } from '../Hymns';
 
@@ -243,7 +243,7 @@ export default function WorshipPpt({ b }) {
     setBusy('배경 그림 올리는 중…');
     try {
       const url = await shrinkImage(f, 2000, 0.88);
-      const body = new Uint8Array(await (await fetch(url)).arrayBuffer());
+      const body = dataUrlBytes(url);
       const res = await fetch(withChurch('/api/worship-ppt/background'), { method: 'PUT', headers: { 'Content-Type': 'application/octet-stream' }, body });
       if (!res.ok) throw new Error((await res.json().catch(() => null))?.error || '배경 그림을 올리지 못했습니다.');
       setInfo(await res.json());

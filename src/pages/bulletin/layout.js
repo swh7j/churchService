@@ -148,6 +148,17 @@ export function deriveSummary(layout) {
 }
 
 /** 이미지 파일을 긴 변 maxPx 이하 JPEG 로 줄여 data URL 로 */
+/**
+ * data: 주소 → 바이트. fetch(dataUrl) 은 서버 보안 설정(CSP connect-src 'self')에 막혀
+ * "Load failed"(사파리) / "Failed to fetch"(크롬)가 나므로 직접 풂
+ */
+export function dataUrlBytes(url) {
+  const bin = atob(url.slice(url.indexOf(',') + 1));
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
+
 export function shrinkImage(file, maxPx = 1600, quality = 0.82) {
   return new Promise((resolve, reject) => {
     const img = new Image();

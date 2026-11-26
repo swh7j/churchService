@@ -94,6 +94,33 @@ describe('fillTemplate: 서식 채우기', () => {
     expect(slides[1].xml).not.toContain('spAutoFit');
   });
 
+  it('끼워 넣은 화면까지 파일 이름이 발표 순서대로 slide1, slide2 … (노트·형식 목록 연결도 같이)', async () => {
+    const notesRel = '<Relationship Id="rId9" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/notesSlide" Target="../notesSlides/notesSlide1.xml"/>';
+    const buf = await makePptx([
+      { xml: slide(textBox(['첫 화면'])) },
+      { xml: slide(textBox([`{${NEWS_KEY}}`])) },
+      { xml: slide(textBox(['마지막 화면'])), rels: notesRel },
+    ]);
+    // 마지막 화면의 노트, 형식 목록
+    const z = await JSZip.loadAsync(buf);
+    z.file('ppt/notesSlides/notesSlide1.xml', '<?xml version="1.0"?><p:notes xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main"/>');
+    z.file('ppt/notesSlides/_rels/notesSlide1.xml.rels',
+      '<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="../slides/slide3.xml"/></Relationships>');
+    const ct = await z.file('[Content_Types].xml').async('string');
+    z.file('[Content_Types].xml', ct.replace('</Types>', [1, 2, 3].map((i) => `<Override PartName="/ppt/slides/slide${i}.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>`).join('') + '</Types>'));
+
+    const news = ['1. 하나', '2. 둘', '3. 셋', '4. 넷', '5. 다섯', '6. 여섯', '7. 일곱'].join('\n'); // 3화면
+    const { zip, slides } = await readSlides(await fillTemplate(await z.generateAsync({ type: 'uint8array' }), { [NEWS_KEY]: news }));
+    expect(slides.map((s) => s.path)).toEqual([1, 2, 3, 4, 5].map((i) => `ppt/slides/slide${i}.xml`));
+    expect(slides.map((s) => s.texts[0])).toEqual(['첫 화면', '1. 하나', '4. 넷', '7. 일곱', '마지막 화면']);
+    // 마지막 화면이 slide5 가 되면서 노트 연결도 따라감
+    expect(await zip.file('ppt/slides/_rels/slide5.xml.rels').async('string')).toContain('notesSlide1.xml');
+    expect(await zip.file('ppt/notesSlides/_rels/notesSlide1.xml.rels').async('string')).toContain('Target="../slides/slide5.xml"');
+    const types = await zip.file('[Content_Types].xml').async('string');
+    for (const i of [1, 2, 3, 4, 5]) expect(types).toContain(`PartName="/ppt/slides/slide${i}.xml"`);
+    expect(Object.keys(zip.files).filter((f) => /^ppt\/slides\/slide\d+\.xml$/.test(f))).toHaveLength(5);
+  });
+
   it('교회소식이 비어 있으면 화면은 그대로 두고 글만 지움', async () => {
     const buf = await makePptx([{ xml: slide(textBox([`{${NEWS_KEY}}`])) }]);
     const { slides } = await readSlides(await fillTemplate(buf, { [NEWS_KEY]: '' }));

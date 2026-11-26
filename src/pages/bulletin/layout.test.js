@@ -1,6 +1,6 @@
 // 주보 내용 계산 (권·주, 저장된 값 읽기, 교회 소식 → 주보 소식, 목록용 요약)
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_LAYOUT, deriveSummary, dotDate, newsToAnnouncements, parseLayout, parseTemplate, volWeek } from './layout';
+import { DEFAULT_LAYOUT, dataUrlBytes, deriveSummary, dotDate, newsToAnnouncements, parseLayout, parseTemplate, volWeek } from './layout';
 
 describe('volWeek: 권·주 자동 계산', () => {
   it('2026년 첫 주일(1월 4일)이 1주, 11월 22일은 47주', () => {
@@ -61,5 +61,12 @@ describe('deriveSummary: 목록·성도 화면용 요약', () => {
   });
   it('말씀 줄이 없으면 빈칸', () => {
     expect(deriveSummary({ main: { sections: [{ rows: [{ item: '찬송' }] }] } }).sermon_title).toBe('');
+  });
+});
+
+describe('dataUrlBytes: data 주소를 바이트로 (fetch 없이)', () => {
+  it('base64 내용을 그대로 풂', () => {
+    const bytes = dataUrlBytes('data:image/jpeg;base64,' + btoa(String.fromCharCode(0xff, 0xd8, 0x00, 0x41)));
+    expect([...bytes]).toEqual([0xff, 0xd8, 0x00, 0x41]);
   });
 });

@@ -208,7 +208,10 @@ export async function fillTemplate(buf, values, inserts = {}, background = null)
       extra.push([path, np2, await picSlide(zip, path, np2, img)]);
     }
   }
-  if (extra.length) await addSlides(zip, extra);
+  if (extra.length) {
+    await addSlides(zip, extra);
+    await renumberSlides(zip);
+  }
   return zip.generateAsync({ type: 'blob', compression: 'DEFLATE', mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation' });
 }
 
@@ -322,6 +325,45 @@ async function addSlides(zip, extra) {
   zip.file(ctPath, serialize(ct));
   zip.file(relsPath, serialize(rels));
   zip.file('ppt/presentation.xml', serialize(pres));
+}
+
+/**
+ * 슬라이드 파일 이름을 발표 순서대로 slide1, slide2 … 로 다시 붙임.
+ * 끼워 넣은 화면은 파일 이름이 맨 뒤 번호라서, 발표 순서 대신 파일 이름 순서로 읽는 뷰어(휴대폰 미리보기 등)에서
+ * 화면이 섞이거나 반복돼 보일 수 있음. 파워포인트가 저장하는 모양과 같게 맞춤
+ */
+export async function renumberSlides(zip) {
+  const order = await slidePaths(zip);
+  const map = {};
+  order.forEach((p, i) => {
+    const to = `ppt/slides/slide${i + 1}.xml`;
+    if (p !== to) map[p] = to;
+  });
+  if (!Object.keys(map).length) return;
+  const base = (p) => p.split('/').pop();
+
+  // 파일 옮기기: 먼저 다 읽어 두고 지운 뒤 새 이름으로 씀 (이름이 서로 겹치므로)
+  const moved = [];
+  for (const [from, to] of Object.entries(map)) {
+    moved.push([to, await zip.file(from).async('uint8array')]);
+    const rels = zip.file(relsOf(from));
+    if (rels) moved.push([relsOf(to), await rels.async('uint8array')]);
+  }
+  for (const from of Object.keys(map)) {
+    zip.remove(from);
+    zip.remove(relsOf(from));
+  }
+  for (const [path, data] of moved) zip.file(path, data);
+
+  // 다른 파일 안의 연결 고치기 (발표 목록, 노트, 화면 간 링크, 내용 형식 목록)
+  const byName = Object.fromEntries(Object.entries(map).map(([f, t]) => [base(f), base(t)]));
+  const fix = (s) => s.replace(/((?:Target|PartName)="(?:[^"]*\/)?)(slide\d+\.xml)"/g, (m, pre, n) => (byName[n] ? `${pre}${byName[n]}"` : m));
+  const texts = Object.keys(zip.files).filter((f) => f.endsWith('.rels') || f === '[Content_Types].xml');
+  for (const f of texts) {
+    const s = await zip.file(f).async('string');
+    const out = fix(s);
+    if (out !== s) zip.file(f, out);
+  }
 }
 
 // ── 그림 화면 (찬송 악보, 교독문) ──
