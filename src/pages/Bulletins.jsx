@@ -86,7 +86,7 @@ export default function Bulletins() {
       )}
       {ppt && (
         <Modal title={`예배 PPT 만들기 · ${kdate(ppt.date)}`} onClose={() => setPpt(null)} wide>
-          <WorshipPpt b={ppt} />
+          <WorshipPpt b={ppt} fixed={template} />
         </Modal>
       )}
       {editingTemplate && (

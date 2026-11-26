@@ -64,9 +64,24 @@ const longDate = (s) => {
  * 자리 표시 이름 → 주보에서 찾은 값
  * {영광송} 내용, {기도 담당} 맡은 사람, {영광송 제목} 찬송 제목, {찬송2} 두 번째 '찬송' 줄
  */
-export function lookup(key, b, rows, hymns) {
+/** 주보 고정 정보(표어·사명선언문 등)에서 채우는 자리 표시. 표어는 앞의 '표어 :' 를 뺌 */
+export function fixedValues(t = {}) {
+  const lines = (a) => (Array.isArray(a) ? a.map((x) => String(x || '').trim()).filter(Boolean).join('\n') : '');
+  const motto = String(t.motto || '').replace(/^\s*표어\s*[:：]\s*/, '').trim();
+  return {
+    표어: motto,
+    올해표어: motto,
+    교회표어: motto,
+    사명선언문: String(t.mission || '').trim(),
+    비전: lines(t.visions),
+    우리의비전: lines(t.visions),
+    담임목사: String(t.pastor || '').trim(),
+  };
+}
+
+export function lookup(key, b, rows, hymns, fixed = {}) {
   if (key === NEWS_KEY) return b.announcements || '';
-  const special = { 날짜: longDate(b.date), 설교제목: b.sermon_title, 설교자: b.preacher, 본문: b.scripture, 예배명: b.title };
+  const special = { 날짜: longDate(b.date), 설교제목: b.sermon_title, 설교자: b.preacher, 본문: b.scripture, 예배명: b.title, ...fixedValues(fixed) };
   if (norm(key) in special) return special[norm(key)] || '';
   const m = key.match(/^(.*?)(\d*)\s*(담당|제목)?$/);
   const name = norm(m[1]);
@@ -78,7 +93,6 @@ export function lookup(key, b, rows, hymns) {
   return h ? `${h[1]}장` : row.content || '';
 }
 
-// 만든 시각을 붙여 이름이 겹치지 않게 함 (아이폰 미리보기는 이름이 같으면 예전 파일 화면을 섞어 보여 줌)
 /** Blob 을 파일로 내려받음 */
 function save(blob, name) {
   const a = document.createElement('a');
@@ -90,13 +104,15 @@ function save(blob, name) {
   setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
 }
 
+// 만든 시각을 붙여 이름이 겹치지 않게 함 (아이폰 미리보기는 이름이 같으면 예전 파일 화면을 섞어 보여 줌)
 const fileName = (date) => {
   const t = new Date();
   const hm = [t.getHours(), t.getMinutes(), t.getSeconds()].map((n) => String(n).padStart(2, '0')).join('');
   return `주일낮PPT(${(date || '').slice(2).replace(/-/g, '')})_${hm}.pptx`;
 };
 
-export default function WorshipPpt({ b }) {
+/** fixed: 주보 고정 정보 (표어·사명선언문 등, {표어} 같은 자리 표시를 채움) */
+export default function WorshipPpt({ b, fixed }) {
   const [info, setInfo] = useState(null); // 올린 서식 정보
   const [buf, setBuf] = useState(null);
   const [keys, setKeys] = useState([]);
@@ -180,8 +196,8 @@ export default function WorshipPpt({ b }) {
   useEffect(() => {
     const rows = parseLayout(b.layout).main.sections.flatMap((s) => s.rows);
     // 찬송 제목 칸은 보관함 목록이 늦게 와도 채워지도록 비어 있으면 다시 찾음
-    setValues((v) => Object.fromEntries(keys.map((k) => [k, (/제목$/.test(k) ? v[k] || null : v[k]) ?? lookup(k, b, rows, titles)])));
-  }, [keys, titles, b]);
+    setValues((v) => Object.fromEntries(keys.map((k) => [k, (/제목$/.test(k) ? v[k] || null : v[k]) ?? lookup(k, b, rows, titles, fixed || {})])));
+  }, [keys, titles, b, fixed]);
 
   const upload = async (e) => {
     const f = e.target.files[0];
@@ -333,7 +349,7 @@ export default function WorshipPpt({ b }) {
       )}
       {err && <p className="warn">{err}</p>}
       {info && !info.name && common?.size ? (
-        <p className="muted small">처음이라면 <strong>공통 양식 받기</strong>로 기본 서식을 받아, 파워포인트에서 교회 이름·표어·배경을 고친 뒤 <strong>서식 올리기</strong>로 올려 주세요.</p>
+        <p className="muted small">처음이라면 <strong>공통 양식 받기</strong>로 기본 서식을 받아, 파워포인트에서 교회 이름·배경을 고친 뒤 (표어·사명선언문은 주보 고정 정보에서 자동으로 채움) <strong>서식 올리기</strong>로 올려 주세요.</p>
       ) : null}
 
       {info?.name && loading && <p className="muted">서식 PPT를 읽는 중…</p>}
@@ -395,6 +411,7 @@ export default function WorshipPpt({ b }) {
           <li>같은 이름이 두 번 나오면 <code>{'{찬송2}'}</code>, <code>{'{찬송2 제목}'}</code> 처럼 번호를 붙입니다.</li>
           <li><code>{'{교회소식}'}</code> 만 쓴 줄은 소식 항목으로 채우고, 많으면 화면을 늘려 3개씩 나눕니다.</li>
           <li>그 밖에 <code>{'{날짜}'}</code>, <code>{'{설교제목}'}</code>, <code>{'{본문}'}</code>, <code>{'{설교자}'}</code> 를 쓸 수 있습니다.</li>
+          <li><code>{'{표어}'}</code>, <code>{'{사명선언문}'}</code>, <code>{'{비전}'}</code>, <code>{'{담임목사}'}</code> 는 주보 고정 정보에 적어 둔 내용으로 채웁니다. 표어가 바뀌면 주보 고정 정보만 고치면 됩니다.</li>
           <li>옛날 형식(.ppt)은 '다른 이름으로 저장 → PowerPoint 프레젠테이션(*.pptx)'으로 바꿔 올려 주세요.</li>
         </ul>
       </details>
