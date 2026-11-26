@@ -8,8 +8,8 @@
 
 - 백엔드: Spring Boot 4 (Java 17), Spring Security, JdbcTemplate, SQLite, Apache POI
 - 프론트엔드: React 19, Vite
-- 운영: Google Cloud e2-micro (무료 범위), Caddy, systemd
-- 테스트: 서버 69개(JUnit 5), 화면 41개(Vitest), ESLint, GitHub Actions
+- 운영: Google Cloud e2-micro (무료 범위), Caddy, systemd, UptimeRobot
+- 테스트: 서버 74개(JUnit 5), 화면 41개(Vitest), ESLint, GitHub Actions
 - 개발 방식: 코드는 Claude Code(AI)와 같이 짰습니다. 무엇을 만들지 정하고, 설계를 고르고, 결과가 맞는지 확인하고, 배포하고 운영하는 건 제가 했습니다.
 
 ## 만든 이유
@@ -181,6 +181,7 @@ npm run check            # 화면: ESLint + Vitest
 ```
 
 서버 테스트는 대부분 통합 테스트입니다. 임시 폴더에 서버를 실제로 띄우고 HTTP 로 요청을 보내서 권한, 교회 간 격리, 결산 계산, 백업 같은 걸 봅니다.
+백업은 만들기만 해서는 의미가 없어서, 복원하면 백업 시점으로 돌아가는지, 복원 직전 상태로 되돌릴 수 있는지, 백업 파일이 SQLite 무결성 검사를 통과하는지, 깨진 파일은 거절하는지까지 확인합니다(`BackupRestoreTest`).
 화면 테스트는 예배 PPT 만들기나 주보 계산처럼, 틀리면 결과물이 바로 잘못 나오는 부분 위주입니다.
 푸시하면 GitHub Actions 에서 둘 다 돌아갑니다.
 
@@ -200,5 +201,6 @@ npm run dev      # Spring(8080) + React(5173), http://localhost:5173
 서버 준비는 [deploy/README-google.md](deploy/README-google.md) 에 정리했습니다.
 `npm run deploy` 하나로 빌드, 업로드, 서버 설정(Java, Caddy, systemd, HTTPS)까지 끝납니다. 몇 번을 다시 돌려도 데이터와 백업은 그대로입니다.
 백업은 하루 한 번 자동으로 하고 최근 30개를 남깁니다. 서버 밖에도 한 벌 있어야 해서, 관리자가 백업을 내려받은 지 30일이 넘으면 대시보드에 알림이 뜹니다.
+서버가 멈췄을 때 교회에서 연락이 오기 전에 알 수 있도록, UptimeRobot 이 서버 밖에서 사이트를 주기적으로 열어 보고 접속이 안 되면 알려 줍니다.
 
 실제 교회 데이터와 서버 접속 정보는 저장소에 넣지 않았습니다.
