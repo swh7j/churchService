@@ -147,6 +147,54 @@ function fillNews(p, items) {
   });
 }
 
+const EMU_PT = 12700;
+const num = (el, attr, def) => (el && el.hasAttribute(attr) ? Number(el.getAttribute(attr)) : def);
+
+/** 글 한 줄의 대략적인 폭(pt). 한글·한자는 글자 크기만큼, 빈칸은 0.3, 나머지는 0.6 */
+function textWidth(text, pt) {
+  let w = 0;
+  for (const ch of text) w += pt * (/[\u1100-\u11ff\u3000-\u9fff\uac00-\ud7af\uff00-\uffef]/.test(ch) ? 1 : ch === ' ' ? 0.3 : 0.6);
+  return w;
+}
+
+/**
+ * '글에 맞춰 크기 조정'(spAutoFit) 글상자 중 색이 칠해진 것은 저장된 높이가 글보다 작으면 늘림.
+ * 서식에서 글을 고친 뒤 높이가 한 줄짜리로 남아 있으면 흰 바탕이 첫 줄만 덮고 나머지 글이 밖으로 나옴
+ * (PDF·휴대폰에서는 저장된 높이 그대로 그림). 줄 수는 글자 폭으로 어림함. 늘렸으면 true
+ */
+export function growAutoFitBoxes(doc) {
+  let grew = false;
+  for (const sp of els(doc, P, 'sp')) {
+    const body = els(sp, A, 'bodyPr')[0];
+    const spPr = els(sp, P, 'spPr')[0];
+    const ext = spPr && els(spPr, A, 'ext').find((e) => e.hasAttribute('cy'));
+    if (!body || !ext || !els(body, A, 'spAutoFit').length) continue;
+    if (![...spPr.children].some((c) => c.localName === 'solidFill' || c.localName === 'gradFill' || c.localName === 'blipFill')) continue;
+    const innerW = (num(ext, 'cx', 0) - num(body, 'lIns', 91440) - num(body, 'rIns', 91440)) / EMU_PT;
+    if (innerW <= 0) continue;
+    let h = 0;
+    for (const p of els(sp, A, 'p')) {
+      const r = els(p, A, 'rPr')[0] || els(p, A, 'endParaRPr')[0];
+      const pt = num(r, 'sz', 1800) / 100;
+      const pPr = [...p.children].find((c) => c.localName === 'pPr');
+      const pts = pPr && els(pPr, A, 'lnSpc')[0];
+      const lineH = pts && els(pts, A, 'spcPts')[0] ? num(els(pts, A, 'spcPts')[0], 'val', 0) / 100
+        : pts && els(pts, A, 'spcPct')[0] ? pt * 1.2 * num(els(pts, A, 'spcPct')[0], 'val', 100000) / 100000
+          : pt * 1.2;
+      const gap = (tag) => { const s = pPr && els(pPr, A, tag)[0]; const v = s && els(s, A, 'spcPts')[0]; return v ? num(v, 'val', 0) / 100 : 0; };
+      const lines = Math.max(1, Math.ceil(textWidth(paraText(p), pt) / innerW));
+      h += lines * lineH + gap('spcBef') + gap('spcAft');
+    }
+    // 그리는 프로그램마다 첫 줄 위치가 조금씩 달라서 10% 여유
+    const cy = Math.round(h * 1.1 * EMU_PT + num(body, 'tIns', 45720) + num(body, 'bIns', 45720));
+    if (cy > num(ext, 'cy', 0) * 1.05) {
+      ext.setAttribute('cy', String(cy));
+      grew = true;
+    }
+  }
+  return grew;
+}
+
 /** 문단 p 가 든 글상자를 화면 폭 W 에서 왼쪽 여백과 같은 오른쪽 여백만 남기고 넓힘 */
 function widenBox(p, W) {
   let sp = p.parentNode;
@@ -198,8 +246,9 @@ export async function fillTemplate(buf, values, inserts = {}, background = null)
       const out = text.replace(PH, (m, k) => fill(k.trim()));
       if (out !== text) setParaText(p, out);
     }
+    const grew = growAutoFitBoxes(doc);
     if (!newsPara) {
-      if (paras.length) zip.file(path, serialize(doc));
+      if (paras.length || grew) zip.file(path, serialize(doc));
       continue;
     }
     // 교회소식: 첫 화면은 이 슬라이드, 넘치는 만큼 슬라이드를 복사

@@ -1,7 +1,7 @@
 // 예배 PPT 만들기 (서식 채우기 · 교회소식 나누기 · 배경 그림 찾기)
 import JSZip from 'jszip';
 import { describe, expect, it } from 'vitest';
-import { NEWS_KEY, fillTemplate, findBackground, splitNews, templateKeys } from './pptx';
+import { NEWS_KEY, fillTemplate, findBackground, growAutoFitBoxes, splitNews, templateKeys } from './pptx';
 
 const NS = 'xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"';
 const W = 9144000;
@@ -164,5 +164,34 @@ describe('findBackground: 서식의 배경 그림 찾기', () => {
       { xml: slide(pic('rId2', false)), rels: imgRel('rId2', '../media/logo.png') },
     ]);
     expect(await findBackground(await JSZip.loadAsync(small), paths(2))).toBeNull();
+  });
+});
+
+describe('growAutoFitBoxes: 글에 맞춰 크기 조정 상자의 높이', () => {
+  const sp = (fill, autofit, lines) =>
+    `<p:sp><p:spPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="${W}" cy="700000"/></a:xfrm>${fill ? '<a:solidFill><a:srgbClr val="FFFFFF"/></a:solidFill>' : ''}</p:spPr>` +
+    `<p:txBody><a:bodyPr>${autofit ? '<a:spAutoFit/>' : ''}</a:bodyPr>` +
+    lines.map((t) => `<a:p><a:pPr><a:lnSpc><a:spcPts val="4000"/></a:lnSpc></a:pPr><a:r><a:rPr sz="2400"/><a:t>${t}</a:t></a:r></a:p>`).join('') +
+    '</p:txBody></p:sp>';
+  const doc = (xml) => new DOMParser().parseFromString(slide(xml), 'application/xml');
+  const cy = (d) => Number(d.getElementsByTagNameNS('http://schemas.openxmlformats.org/drawingml/2006/main', 'ext')[0].getAttribute('cy'));
+  const six = ['우리는', '하나님', '나라', '확장을', '최고의', '가치로'];
+
+  it('칠해진 상자에 글이 6줄이면 6줄(40pt 간격) + 여유만큼 늘림', () => {
+    const d = doc(sp(true, true, six));
+    expect(growAutoFitBoxes(d)).toBe(true);
+    expect(cy(d)).toBeGreaterThan(6 * 40 * 12700);
+    expect(cy(d)).toBeLessThan(7.5 * 40 * 12700);
+  });
+  it('한 줄이면, 색이 없거나 자동 크기가 아니면 그대로', () => {
+    for (const d of [doc(sp(true, true, ['한 줄'])), doc(sp(false, true, six)), doc(sp(true, false, six))]) {
+      expect(growAutoFitBoxes(d)).toBe(false);
+      expect(cy(d)).toBe(700000);
+    }
+  });
+  it('긴 글은 폭에 맞춰 여러 줄로 셈', () => {
+    const d = doc(sp(true, true, ['가'.repeat(60)])); // 24pt 글자 60개 ≈ 1440pt, 상자 폭 ≈ 703pt → 3줄
+    growAutoFitBoxes(d);
+    expect(cy(d)).toBeGreaterThan(3 * 40 * 12700);
   });
 });

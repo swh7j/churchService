@@ -378,9 +378,10 @@ export default function WorshipPpt({ b }) {
             </div>
           )}
           <div className="form-actions">
-            <button className="btn primary" onClick={make} disabled={!buf || !!busy}>{busy || 'PPT 만들기 (.pptx 받기)'}</button>
+            <button className="btn primary" onClick={make} disabled={!buf || !!busy}>{busy ? '만드는 중…' : 'PPT 만들기 (.pptx 받기)'}</button>
             <button className="btn" onClick={makePdf} disabled={!buf || !!busy}>휴대폰 확인용 PDF</button>
           </div>
+          {busy && <p className="small" role="status">{busy}</p>}
           <p className="muted small">아이폰에서 PPT 를 바로 누르면 화면이 겹치거나 빠져 보일 수 있습니다. 휴대폰으로 확인할 때는 PDF 로 보거나 PPT 를 Keynote·PowerPoint 앱으로 열어 주세요.</p>
         </>
       )}
